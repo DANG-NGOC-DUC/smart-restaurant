@@ -6,11 +6,12 @@ import path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const supabaseUrl = process.env.SUPABASE_URL;
-
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const missing = [];
 if (!supabaseUrl) missing.push("SUPABASE_URL");
+if (!supabaseAnonKey) missing.push("SUPABASE_ANON_KEY");
 if (!supabaseServiceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
 if (missing.length > 0) {
   throw new Error(
@@ -23,7 +24,11 @@ if (missing.length > 0) {
  * Dùng Service Role Key vì backend cần quyền truy cập đầy đủ
  */
 
-export const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey,
+  supabaseServiceRoleKey,
+);
 
 /**
  * 2. Supabase Admin Client (Privileged)

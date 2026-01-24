@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import supabase from "./config/supabase.js";
+import authRoutes from "./routes/auth.routes.js";
+import adminRoutes from "./routes/admin.routes.js"; // Import admin routes
 
 dotenv.config();
 
@@ -23,5 +25,9 @@ app.get("/test-supabase", async (req, res) => {
   if (error) return res.status(500).json(error);
   res.json(data);
 });
+
+// API Routes
+app.use("/api/auth", authRoutes); // Changed to /api/auth
+app.use("/api/admin", adminRoutes); // Add admin routes
 
 export default app;
