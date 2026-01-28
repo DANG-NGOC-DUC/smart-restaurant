@@ -24,11 +24,7 @@ if (missing.length > 0) {
  * Dùng Service Role Key vì backend cần quyền truy cập đầy đủ
  */
 
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseAnonKey,
-  supabaseServiceRoleKey,
-);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /**
  * 2. Supabase Admin Client (Privileged)
