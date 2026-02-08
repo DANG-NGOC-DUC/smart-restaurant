@@ -12,42 +12,48 @@ export function useLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    // Clear error when user starts typing
-    if (error) setError(null);
-  }, [error]);
+  const handleChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+      // Clear error when user starts typing
+      if (error) setError(null);
+    },
+    [error],
+  );
 
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      setError(null);
 
-    // Validation
-    if (!formData.email || !formData.password) {
-      setError("Vui lòng nhập đầy đủ thông tin.");
-      setLoading(false);
-      return;
-    }
+      // Validation
+      if (!formData.email || !formData.password) {
+        setError("Vui lòng nhập đầy đủ thông tin.");
+        setLoading(false);
+        return;
+      }
 
-    try {
-      await login({ email: formData.email, password: formData.password });
-      navigate("/");
-    } catch (err) {
-      setError(
-        err.response?.data?.error ||
-          err.response?.data?.message ||
-          err.message ||
-          "Đăng nhập thất bại. Vui lòng thử lại."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [formData, login, navigate]);
+      try {
+        await login({ email: formData.email, password: formData.password });
+        navigate("/admin");
+      } catch (err) {
+        setError(
+          err.response?.data?.error ||
+            err.response?.data?.message ||
+            err.message ||
+            "Đăng nhập thất bại. Vui lòng thử lại.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [formData, login, navigate],
+  );
 
   const clearError = useCallback(() => {
     setError(null);

@@ -27,4 +27,24 @@ export const UserModel = {
       .returning("*");
     return updated;
   },
+
+  async findAll(
+    fields = ["id", "email", "role", "phone"],
+    page = 1,
+    pageSize = 20,
+  ) {
+    return knex(TABLE)
+      .select(fields)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+  },
+
+  async delete(id) {
+    return knex(TABLE).where({ id }).del();
+  },
+
+  async count() {
+    const result = await knex(TABLE).count("id as count").first();
+    return parseInt(result.count, 10);
+  },
 };

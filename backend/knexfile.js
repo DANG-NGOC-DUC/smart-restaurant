@@ -5,11 +5,7 @@ export default {
   development: {
     client: "pg",
     connection: {
-      host: process.env.SUPABASE_DB_HOST,
-      port: process.env.SUPABASE_DB_PORT || 6543,
-      user: process.env.SUPABASE_DB_USER,
-      password: process.env.SUPABASE_DB_PASSWORD,
-      database: process.env.SUPABASE_DB_NAME,
+      connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
     },
     migrations: {

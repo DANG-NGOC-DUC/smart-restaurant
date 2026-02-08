@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: "Inter", "Open Sans", Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    /* ============ SEAFOOD BRAND COLORS ============ */
+    /* Primary - Teal */
+    --sea-primary: 193 65% 29%;
+    --sea-primary-light: 190 40% 93%;
+    --sea-primary-dark: 193 75% 19%;
+
+    /* Coral */
+    --sea-coral: 15 83% 69%;
+    --sea-cta: 4 79% 60%;
+
+    /* Crimson */
+    --sea-crimson: 351 54% 49%;
+
+    /* Gold */
+    --sea-gold: 42 54% 57%;
+
+    /* Cream Background */
+    --sea-cream: 30 100% 97%;
+
+    /* ============ SHADCN VARIABLES ============ */
+    --background: 30 100% 97%;
+    --foreground: 193 75% 19%;
+    --card: 0 0% 100%;
+    --card-foreground: 193 75% 19%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 193 75% 19%;
+    --primary: 193 65% 29%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 190 40% 93%;
+    --secondary-foreground: 193 75% 19%;
+    --muted: 190 20% 95%;
+    --muted-foreground: 200 10% 45%;
+    --accent: 15 83% 69%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 351 54% 49%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 190 30% 88%;
+    --input: 190 30% 88%;
+    --ring: 193 65% 29%;
+    --chart-1: 193 65% 29%;
+    --chart-2: 15 83% 69%;
+    --chart-3: 351 54% 49%;
+    --chart-4: 42 54% 57%;
+    --chart-5: 190 40% 70%;
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 193 65% 29%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 15 83% 69%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 193 65% 35%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 193 65% 40%;
+    --sidebar-ring: 15 83% 69%;
+  }
+  .dark {
+    /* ============ DARK MODE - SEAFOOD BRAND ============ */
+    --background: 193 75% 8%;
+    --foreground: 190 40% 95%;
+    --card: 193 75% 12%;
+    --card-foreground: 190 40% 95%;
+    --popover: 193 75% 12%;
+    --popover-foreground: 190 40% 95%;
+    --primary: 190 50% 60%;
+    --primary-foreground: 193 75% 8%;
+    --secondary: 193 50% 20%;
+    --secondary-foreground: 190 40% 95%;
+    --muted: 193 50% 18%;
+    --muted-foreground: 190 20% 65%;
+    --accent: 15 70% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 351 60% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 193 40% 20%;
+    --input: 193 40% 20%;
+    --ring: 190 50% 60%;
+    --chart-1: 190 50% 60%;
+    --chart-2: 15 70% 55%;
+    --chart-3: 351 60% 50%;
+    --chart-4: 42 60% 55%;
+    --chart-5: 190 40% 50%;
+    --sidebar-background: 193 75% 8%;
+    --sidebar-foreground: 190 40% 95%;
+    --sidebar-primary: 15 70% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 193 50% 15%;
+    --sidebar-accent-foreground: 190 40% 95%;
+    --sidebar-border: 193 40% 18%;
+    --sidebar-ring: 15 70% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

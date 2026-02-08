@@ -5,15 +5,23 @@ import db from "../../db/knex.js";
  * Đăng ký người dùng mới bằng email và mật khẩu qua Supabase Auth.
  * Sau khi đăng ký thành công trên Supabase, tự động tạo một hồ sơ người dùng
  * trong bảng `users` của hệ thống với vai trò 'guest'.
+ * @param {string} fullName
+ * @param {string} phone
  * @param {string} email
  * @param {string} password
  * @returns {Promise<{ user: object, session: object, error: object }>}
  */
-const register = async (email, password) => {
+const register = async (fullName, phone, email, password) => {
   // 1. Gọi Supabase để đăng ký người dùng
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      data: {
+        full_name: fullName,
+        phone: phone,
+      },
+    },
   });
 
   if (authError) {
@@ -37,6 +45,8 @@ const register = async (email, password) => {
   // 2. Nếu đăng ký trên Supabase thành công, tạo bản ghi trong bảng `users` của bạn
   const newUser = {
     id: authData.user.id, // Dùng ID từ Supabase làm khóa chính
+    full_name: fullName,
+    phone: phone,
     email: authData.user.email,
     role: "guest", // Mặc định là guest
   };

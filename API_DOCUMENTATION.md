@@ -97,3 +97,72 @@ Cho phép admin thay đổi vai trò (role) của một người dùng bất k�
     "role": "staff"
   }
   ```
+
+---
+
+### 2. Lấy danh sách tất cả người dùng
+
+Lấy thông tin của tất cả người dùng trong hệ thống.
+
+- **Phương thức:** `GET`
+- **Endpoint:** `/api/admin/users`
+- **Headers:**
+  - `Authorization`: `Bearer <YOUR_ADMIN_ACCESS_TOKEN>`
+- **Phản hồi thành công (200 OK):**
+  ```json
+  [
+    {
+      "id": "user-id-1",
+      "email": "user1@example.com",
+      "role": "guest"
+    },
+    {
+      "id": "user-id-2",
+      "email": "user2@example.com",
+      "role": "staff"
+    }
+  ]
+  ```
+
+---
+
+### 3. Lấy thông tin một người dùng
+
+Lấy thông tin chi tiết của một người dùng bằng ID.
+
+- **Phương thức:** `GET`
+- **Endpoint:** `/api/admin/users/:userId`
+  - `:userId`: ID của người dùng cần lấy thông tin.
+- **Headers:**
+  - `Authorization`: `Bearer <YOUR_ADMIN_ACCESS_TOKEN>`
+- **Phản hồi thành công (200 OK):**
+  ```json
+  {
+    "id": "user-id-that-was-fetched",
+    "email": "user@example.com",
+    "role": "staff"
+  }
+  ```
+
+---
+
+### 4. Xóa người dùng
+
+Xóa một người dùng khỏi hệ thống bằng ID.
+
+- **Phương thức:** `DELETE`
+- **Endpoint:** `/api/admin/users/:userId`
+  - `:userId`: ID của người dùng cần xóa.
+- **Headers:**
+  - `Authorization`: `Bearer <YOUR_ADMIN_ACCESS_TOKEN>`
+- **Phản hồi thành công (200 OK):**
+  ```json
+  {
+    "message": "User deleted successfully.",
+    "user": {
+      "id": "user-id-that-was-deleted",
+      "email": "user@example.com",
+      "role": "staff"
+    }
+  }
+  ```

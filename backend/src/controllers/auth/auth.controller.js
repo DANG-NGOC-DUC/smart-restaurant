@@ -1,13 +1,20 @@
 import { authService } from "../../services/auth/auth.service.js";
 
 export const register = async (req, res) => {
-  const { email, password } = req.body;
+  const { fullName, phone, email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required." });
+  if (!fullName || !phone || !email || !password) {
+    return res
+      .status(400)
+      .json({ error: "Full name, phone, email and password are required." });
   }
 
-  const { user, error } = await authService.register(email, password);
+  const { user, error } = await authService.register(
+    fullName,
+    phone,
+    email,
+    password,
+  );
 
   if (error) {
     // Supabase returns status 400 for cases like weak password, existing email
@@ -21,7 +28,7 @@ export const register = async (req, res) => {
   // Supabase requires email verification by default, so the initial session might be null.
   // Return the user object so the frontend can display a "Please verify your email" message.
   return res.status(201).json({
-    message: "Sign up successful. Please check your email for verification.",
+    message: "Đăng ký thành công!",
     user,
   });
 };
