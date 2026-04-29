@@ -55,6 +55,11 @@ export const cancelItem = (itemId, reason) => {
   return api.patch(`/staff/order-items/${itemId}/cancel`, { reason });
 };
 
+// Bếp xác nhận đã chế biến xong (PATCH /api/staff/order-items/:itemId/cooked)
+export const markItemCooked = (itemId) => {
+  return api.patch(`/staff/order-items/${itemId}/cooked`);
+};
+
 // Đánh dấu đã lên món (PATCH /api/staff/order-items/:itemId/serve)
 export const markItemServed = (itemId) => {
   return api.patch(`/staff/order-items/${itemId}/serve`);

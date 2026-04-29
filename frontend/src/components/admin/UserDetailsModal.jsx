@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 const ROLES_OPTIONS = [
   { label: "Nhân viên", value: "staff" },
   { label: "Thu ngân", value: "cashier" },
+  { label: "Bếp", value: "chef" },
   { label: "Quản lý", value: "admin" },
 ];
 

@@ -57,7 +57,15 @@ router.patch(
   staffController.cancelItem,
 );
 
-// PATCH /api/staff/order-items/:itemId/serve  — Đã lên món
+// PATCH /api/staff/order-items/:itemId/cooked  — Đã chế biến (bếp xác nhận)
+router.patch(
+  "/order-items/:itemId/cooked",
+  auth,
+  allowRoles("staff"),
+  staffController.markItemCooked,
+);
+
+// PATCH /api/staff/order-items/:itemId/serve  — Đã lên món (nhân viên xác nhận)
 router.patch(
   "/order-items/:itemId/serve",
   auth,

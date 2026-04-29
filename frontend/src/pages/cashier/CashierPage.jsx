@@ -69,6 +69,7 @@ const getItemStatusLabel = (status) => {
   const map = {
     pending: "Chờ duyệt",
     preparing: "Đang nấu",
+    cooked: "Đã nấu",
     served: "Đã lên",
     cancelled: "Đã hủy",
   };
@@ -118,6 +119,7 @@ function ItemStatusBadge({ status }) {
     pending:
       "bg-orange-50 text-orange-600 border border-orange-200 animate-pulse",
     preparing: "bg-amber-50 text-amber-700 border border-amber-200",
+    cooked: "bg-orange-100 text-orange-700 border border-orange-300",
     served: "bg-emerald-50 text-emerald-700 border border-emerald-200",
     cancelled: "bg-red-50 text-red-500 border border-red-200 line-through",
   };
@@ -125,6 +127,7 @@ function ItemStatusBadge({ status }) {
   const icons = {
     pending: <Clock size={10} />,
     preparing: <CookingPot size={10} />,
+    cooked: <CircleCheckBig size={10} />,
     served: <CircleCheckBig size={10} />,
     cancelled: <Ban size={10} />,
   };
@@ -496,8 +499,8 @@ function OrderPanel({
                   )}
                   <div className="mt-1.5 flex items-center gap-2">
                     <ItemStatusBadge status={item.status} />
-                    {/* Nút hủy món — chỉ hiện khi đang nấu (preparing) */}
-                    {item.status === "preparing" && (
+                    {/* Nút hủy món — chỉ hiện khi đang nấu hoặc đã nấu */}
+                    {(item.status === "preparing" || item.status === "cooked") && (
                       <button
                         onClick={() => onCancelItem(item.id)}
                         disabled={actionLoading}

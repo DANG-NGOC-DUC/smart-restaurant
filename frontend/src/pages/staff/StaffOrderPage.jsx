@@ -17,7 +17,9 @@ import CartPanel from "../../components/staff/CartPanel";
 import * as staffService from "../../services/staff.service";
 
 const ITEM_STATUS = {
+  pending: { label: "Chờ", color: "text-yellow-600", icon: Clock },
   preparing: { label: "Đang nấu", color: "text-amber-600", icon: ChefHat },
+  cooked: { label: "Đã nấu", color: "text-orange-600", icon: CheckCircle2 },
   served: { label: "Đã lên", color: "text-emerald-600", icon: CheckCircle2 },
   cancelled: { label: "Đã huỷ", color: "text-red-500", icon: XCircle },
 };

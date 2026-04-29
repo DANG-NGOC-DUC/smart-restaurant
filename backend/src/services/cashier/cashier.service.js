@@ -220,7 +220,7 @@ const approveOrder = async (orderId) => {
 /**
  * Hủy một món trong đơn hàng:
  *  - order_items.status → 'cancelled'
- *  - Chỉ hủy được khi status = 'preparing' (chưa lên bàn)
+ *  - Chỉ hủy được khi status = 'preparing' hoặc 'cooked' (chưa lên bàn)
  *
  * @param {string} itemId - UUID của order_item cần hủy
  * @returns {object} order_item đã được hủy
@@ -242,14 +242,15 @@ const cancelOrderItem = async (itemId) => {
     throw new Error("Món này đã được hủy trước đó.");
   }
 
-  if (item.status !== "preparing") {
+  if (item.status !== "preparing" && item.status !== "cooked") {
     throw new Error(
       `Không thể hủy món. Trạng thái hiện tại: '${item.status}'.`,
     );
   }
 
   const [updatedItem] = await knex("order_items")
-    .where({ id: itemId, status: "preparing" })
+    .where({ id: itemId })
+    .whereIn("status", ["preparing", "cooked"])
     .update({ status: "cancelled" })
     .returning("*");
 

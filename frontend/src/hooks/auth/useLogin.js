@@ -54,6 +54,9 @@ export function useLogin() {
           case "cashier":
             navigate("/cashier");
             break;
+          case "chef":
+            navigate("/chef");
+            break;
           case "admin":
             navigate("/admin");
             break;

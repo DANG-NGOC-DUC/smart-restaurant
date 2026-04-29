@@ -22,6 +22,7 @@ const staffRoles = [
   { label: "Tất cả", value: "Tat ca" },
   { label: "Nhân viên", value: "staff" },
   { label: "Thu ngân", value: "cashier" },
+  { label: "Bếp", value: "chef" },
   { label: "Quản lý", value: "admin" },
 ];
 
@@ -31,6 +32,7 @@ const roleColors = {
   guest: "bg-sea-100 text-sea-700",
   staff: "bg-gold-100 text-gold-700",
   cashier: "bg-coral-100 text-coral-700",
+  chef: "bg-orange-100 text-orange-700",
   admin: "bg-crimson-100 text-crimson-700",
 };
 

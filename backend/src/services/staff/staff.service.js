@@ -305,7 +305,7 @@ const getPendingItems = async () => {
 
 /**
  * Staff hủy món khi khách yêu cầu (chưa lên).
- * Chỉ cho phép hủy khi status = 'preparing'.
+ * Chỉ cho phép hủy khi status = 'preparing' hoặc 'cooked'.
  * Atomic WHERE để chống race condition.
  *
  * @param {string} itemId - UUID order_item
@@ -320,14 +320,15 @@ const cancelItem = async (itemId, reason, staffId = null) => {
   if (!item) {
     throw new Error("Không tìm thấy món.");
   }
-  if (item.status !== "preparing") {
+  if (item.status !== "preparing" && item.status !== "cooked") {
     throw new Error(
-      `Không thể hủy món. Trạng thái hiện tại: '${item.status}'. Chỉ hủy được món đang nấu.`,
+      `Không thể hủy món. Trạng thái hiện tại: '${item.status}'. Chỉ hủy được món đang nấu hoặc đã nấu xong.`,
     );
   }
 
   const [updated] = await knex("order_items")
-    .where({ id: itemId, status: "preparing" })
+    .where({ id: itemId })
+    .whereIn("status", ["preparing", "cooked"])
     .update({
       status: "cancelled",
       cancel_reason: reason.trim(),
@@ -344,22 +345,47 @@ const cancelItem = async (itemId, reason, staffId = null) => {
 };
 
 /**
- * Staff đánh dấu đã lên món (served)
- * Chấp nhận status hiện tại: 'preparing'
+ * Bếp xác nhận đã chế biến xong (preparing → cooked)
  */
-const markItemServed = async (itemId) => {
+const markItemCooked = async (itemId) => {
   const item = await knex("order_items").where({ id: itemId }).first();
   if (!item) {
     throw new Error("Không tìm thấy món.");
   }
   if (item.status !== "preparing") {
     throw new Error(
-      `Không thể lên món. Trạng thái hiện tại: '${item.status}'. Chỉ lên được món đang nấu.`,
+      `Không thể xác nhận. Trạng thái hiện tại: '${item.status}'. Chỉ xác nhận được món đang nấu.`,
     );
   }
 
   const [updated] = await knex("order_items")
     .where({ id: itemId, status: "preparing" })
+    .update({ status: "cooked" })
+    .returning("*");
+
+  if (!updated) {
+    throw new Error("Món đã được cập nhật bởi người khác. Vui lòng thử lại.");
+  }
+
+  return updated;
+};
+
+/**
+ * Nhân viên xác nhận đã lên món (cooked → served)
+ */
+const markItemServed = async (itemId) => {
+  const item = await knex("order_items").where({ id: itemId }).first();
+  if (!item) {
+    throw new Error("Không tìm thấy món.");
+  }
+  if (item.status !== "cooked") {
+    throw new Error(
+      `Không thể lên món. Trạng thái hiện tại: '${item.status}'. Chỉ lên được món đã chế biến xong.`,
+    );
+  }
+
+  const [updated] = await knex("order_items")
+    .where({ id: itemId, status: "cooked" })
     .update({ status: "served" })
     .returning("*");
 
@@ -721,6 +747,7 @@ export const staffService = {
   approveOrder,
   getPendingItems,
   cancelItem,
+  markItemCooked,
   markItemServed,
   createOrderForTable,
   createPaymentRequest,

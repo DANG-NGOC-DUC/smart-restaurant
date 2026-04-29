@@ -285,13 +285,13 @@ const deductInventoryForOrder = async (orderId) => {
 };
 
 /**
- * Hoàn tồn kho khi hủy order — chỉ hoàn cho items đang preparing
+ * Hoàn tồn kho khi hủy order — hoàn cho items đang preparing hoặc đã nấu (chưa phục vụ)
  */
 const restoreInventoryForOrder = async (orderId) => {
   const items = await OrderItemModel.findByOrder(orderId);
 
   for (const item of items) {
-    if (item.status !== "preparing") continue;
+    if (item.status !== "preparing" && item.status !== "cooked") continue;
 
     // Lấy hệ số nhân từ variant
     let multiplier = 1.0;

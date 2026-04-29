@@ -16,10 +16,20 @@ import {
 import * as staffService from "../../services/staff.service";
 
 const STATUS_MAP = {
+  pending: {
+    label: "Chờ",
+    color: "bg-yellow-100 text-yellow-700",
+    icon: Clock,
+  },
   preparing: {
     label: "Đang nấu",
     color: "bg-amber-100 text-amber-700",
     icon: ChefHat,
+  },
+  cooked: {
+    label: "Đã nấu",
+    color: "bg-orange-100 text-orange-700",
+    icon: CheckCircle2,
   },
   served: {
     label: "Đã lên",
@@ -107,6 +117,7 @@ export default function TableDetail() {
   const processingCount = allItems.filter(
     (i) => i.status === "preparing",
   ).length;
+  const cookedCount = allItems.filter((i) => i.status === "cooked").length;
   const servedCount = allItems.filter((i) => i.status === "served").length;
   const cancelledCount = allItems.filter(
     (i) => i.status === "cancelled",
@@ -153,11 +164,17 @@ export default function TableDetail() {
                 {allItems.length} món
               </span>
             </div>
-            <div className="flex gap-3 text-xs">
+            <div className="flex gap-3 text-xs flex-wrap">
               {processingCount > 0 && (
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">
                   <ChefHat className="w-3 h-3" />
                   {processingCount} đang nấu
+                </span>
+              )}
+              {cookedCount > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 text-orange-700 font-medium">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {cookedCount} đã nấu
                 </span>
               )}
               {servedCount > 0 && (

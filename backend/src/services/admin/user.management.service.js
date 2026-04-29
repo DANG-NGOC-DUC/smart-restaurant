@@ -1,8 +1,8 @@
 import { UserModel } from "../../models/user.model.js";
 import { supabaseAdmin } from "../../config/supabase.js";
 
-const ALLOWED_ROLES = ["staff", "cashier", "admin"];
-const STAFF_ROLES = ["admin", "cashier", "staff"];
+const ALLOWED_ROLES = ["staff", "cashier", "chef", "admin"];
+const STAFF_ROLES = ["admin", "cashier", "staff", "chef"];
 const GUEST_ROLES = ["guest"];
 
 /**
