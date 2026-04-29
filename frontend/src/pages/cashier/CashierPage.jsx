@@ -500,7 +500,8 @@ function OrderPanel({
                   <div className="mt-1.5 flex items-center gap-2">
                     <ItemStatusBadge status={item.status} />
                     {/* Nút hủy món — chỉ hiện khi đang nấu hoặc đã nấu */}
-                    {(item.status === "preparing" || item.status === "cooked") && (
+                    {(item.status === "preparing" ||
+                      item.status === "cooked") && (
                       <button
                         onClick={() => onCancelItem(item.id)}
                         disabled={actionLoading}

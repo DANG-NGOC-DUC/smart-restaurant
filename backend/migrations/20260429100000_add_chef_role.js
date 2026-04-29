@@ -1,7 +1,7 @@
 export async function up(knex) {
   // Add 'chef' (bếp) role to the existing enum
   // Update the users table role column to include 'chef'
-  
+
   // Use raw SQL to alter the check constraint
   await knex.raw(`
     ALTER TABLE users 

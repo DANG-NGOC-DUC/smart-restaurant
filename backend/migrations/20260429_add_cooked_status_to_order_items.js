@@ -16,7 +16,7 @@ export const up = async (knex) => {
   // Chỉ cần cập nhật logic application
   // Status đã là string nên có thể thêm "cooked" mà không cần migration
   console.log(
-    "✓ Status 'cooked' sẽ được sử dụng từ nay. Không cần thay đổi schema."
+    "✓ Status 'cooked' sẽ được sử dụng từ nay. Không cần thay đổi schema.",
   );
 };
 

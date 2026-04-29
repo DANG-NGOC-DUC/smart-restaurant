@@ -45,7 +45,7 @@ const getTableDetail = async (req, res, next) => {
 
 /**
  * GET /api/staff/pending-items
- * Lấy danh sách món chờ phục vụ (status = 'preparing')
+ * Lấy danh sách món chờ phục vụ (status = 'preparing' | 'cooked')
  */
 const getPendingItems = async (req, res, next) => {
   try {
@@ -149,7 +149,7 @@ const markItemCooked = async (req, res, next) => {
 
 /**
  * PATCH /api/staff/order-items/:itemId/serve
- * Nhân viên xác nhận đã lên món (cooked → served)
+ * Nhân viên xác nhận đã lên món (preparing|cooked → served)
  */
 const markItemServed = async (req, res, next) => {
   try {

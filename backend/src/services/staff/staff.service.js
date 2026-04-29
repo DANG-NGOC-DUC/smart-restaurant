@@ -257,7 +257,7 @@ const approveOrder = async (orderId) => {
 
 /**
  * GET /api/staff/pending-items
- * Trả về danh sách order_items có status = 'preparing' (đang nấu, chờ NV bưng ra).
+ * Trả về danh sách order_items có status = 'preparing' | 'cooked'.
  * Bếp không thao tác trên hệ thống — chỉ bấm chuông vật lý.
  * NV nghe chuông → bưng đồ → bấm "Đã lên" trên app.
  * Sắp xếp theo created_at ASC (món cũ nhất lên đầu).
@@ -268,7 +268,7 @@ const getPendingItems = async () => {
     .join("sessions as s", "s.id", "o.session_id")
     .join("tables as t", "t.id", "s.table_id")
     .join("menu_items as mi", "mi.id", "oi.menu_item_id")
-    .where("oi.status", "preparing")
+    .whereIn("oi.status", ["preparing", "cooked"])
     .select(
       "oi.id",
       "oi.quantity",
@@ -378,14 +378,15 @@ const markItemServed = async (itemId) => {
   if (!item) {
     throw new Error("Không tìm thấy món.");
   }
-  if (item.status !== "cooked") {
+  if (item.status !== "cooked" && item.status !== "preparing") {
     throw new Error(
-      `Không thể lên món. Trạng thái hiện tại: '${item.status}'. Chỉ lên được món đã chế biến xong.`,
+      `Không thể lên món. Trạng thái hiện tại: '${item.status}'. Chỉ lên được món đang nấu hoặc đã chế biến xong.`,
     );
   }
 
   const [updated] = await knex("order_items")
-    .where({ id: itemId, status: "cooked" })
+    .where({ id: itemId })
+    .whereIn("status", ["preparing", "cooked"])
     .update({ status: "served" })
     .returning("*");
 
