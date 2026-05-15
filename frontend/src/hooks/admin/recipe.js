@@ -49,10 +49,10 @@ export function useAdminRecipe() {
     }
   };
 
-  const handleUpdateItem = async (menuItemId, ingredientId, qty) => {
+  const handleUpdateItem = async (menuItemId, ingredientId, data) => {
     setError(null);
     try {
-      const res = await updateRecipeItem(menuItemId, ingredientId, qty);
+      const res = await updateRecipeItem(menuItemId, ingredientId, data);
       await fetchRecipe(menuItemId);
       return res.data;
     } catch (err) {

@@ -58,6 +58,7 @@ export const MenuItemModel = {
         "menu_item_ingredients.id",
         "menu_item_ingredients.ingredient_id",
         "menu_item_ingredients.quantity_needed",
+        "menu_item_ingredients.is_critical",
         "ingredients.name as ingredient_name",
         "ingredients.unit",
       );

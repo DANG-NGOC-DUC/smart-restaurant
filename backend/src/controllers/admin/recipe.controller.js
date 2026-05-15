@@ -25,7 +25,8 @@ const setRecipe = async (req, res, next) => {
       error.message.includes("không được rỗng") ||
       error.message.includes("cần có") ||
       error.message.includes("lớn hơn 0") ||
-      error.message.includes("trùng")
+      error.message.includes("trùng") ||
+      error.message.includes("is_critical")
     ) {
       return res.status(400).json({ error: error.message });
     }
@@ -36,18 +37,20 @@ const setRecipe = async (req, res, next) => {
 const updateRecipeItem = async (req, res, next) => {
   try {
     const { menuItemId, ingredientId } = req.params;
-    const { quantity_needed } = req.body;
+    const { quantity_needed, is_critical } = req.body;
     const result = await recipeService.updateRecipeItem(
       menuItemId,
       ingredientId,
-      quantity_needed,
+      { quantity_needed, is_critical },
     );
     res.status(200).json(result);
   } catch (error) {
     if (
       error.message.includes("không tồn tại") ||
       error.message.includes("không có trong") ||
-      error.message.includes("lớn hơn 0")
+      error.message.includes("lớn hơn 0") ||
+      error.message.includes("is_critical") ||
+      error.message.includes("Cần quantity_needed")
     ) {
       return res.status(400).json({ error: error.message });
     }

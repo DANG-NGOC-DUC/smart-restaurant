@@ -22,6 +22,9 @@ export const allowRoles = (...roles) => {
       return res.status(403).json({ message: "User role not found" });
     }
 
+    req.user.role = role;
+    req.user.user_metadata = { ...req.user.user_metadata, role };
+
     if (!roles.includes(role)) {
       return res.status(403).json({ message: "Forbidden: insufficient role" });
     }

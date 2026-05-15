@@ -46,13 +46,13 @@ export function useLogin() {
 
         // Redirect theo role (db_role từ backend hoặc user_metadata)
         const role =
-          result?.user?.db_role || result?.user?.user_metadata?.role || "guest";
+          result?.user?.role ||
+          result?.user?.db_role ||
+          result?.user?.user_metadata?.role ||
+          "guest";
         switch (role) {
           case "staff":
             navigate("/staff");
-            break;
-          case "cashier":
-            navigate("/cashier");
             break;
           case "chef":
             navigate("/chef");

@@ -25,4 +25,10 @@ router.get("/payment-methods", reportController.getPaymentMethods);
 // GET /api/admin/reports/peak-hours?range=7days
 router.get("/peak-hours", reportController.getPeakHours);
 
+// GET /api/admin/reports/inventory-consumption?range=7days
+router.get(
+	"/inventory-consumption",
+	reportController.getInventoryConsumption,
+);
+
 export default router;

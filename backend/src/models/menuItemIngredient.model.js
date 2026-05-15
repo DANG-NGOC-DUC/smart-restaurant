@@ -15,27 +15,29 @@ export const MenuItemIngredientModel = {
       menu_item_id: menuItemId,
       ingredient_id: ing.ingredient_id,
       quantity_needed: ing.quantity_needed,
+      is_critical: ing.is_critical === undefined ? true : ing.is_critical,
     }));
     return knex(TABLE).insert(rows).returning("*");
   },
 
   // Lấy tất cả nguyên liệu của 1 món (kèm tên + đơn vị)
-  async findByMenuItemId(menuItemId) {
-    return knex(TABLE)
+  async findByMenuItemId(menuItemId, trx = knex) {
+    return trx(TABLE)
       .join("ingredients", "ingredients.id", `${TABLE}.ingredient_id`)
       .where(`${TABLE}.menu_item_id`, menuItemId)
       .select(
         `${TABLE}.id`,
         `${TABLE}.ingredient_id`,
         `${TABLE}.quantity_needed`,
+        `${TABLE}.is_critical`,
         "ingredients.name as ingredient_name",
         "ingredients.unit",
       );
   },
 
   // Lấy tất cả món dùng 1 nguyên liệu
-  async findByIngredientId(ingredientId) {
-    return knex(TABLE)
+  async findByIngredientId(ingredientId, trx = knex) {
+    return trx(TABLE)
       .join("menu_items", "menu_items.id", `${TABLE}.menu_item_id`)
       .where(`${TABLE}.ingredient_id`, ingredientId)
       .select(

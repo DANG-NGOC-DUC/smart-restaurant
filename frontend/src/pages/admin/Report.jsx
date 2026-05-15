@@ -8,6 +8,7 @@ import {
   TrendingDown,
   Clock,
   CreditCard,
+  Package,
   Loader2,
   AlertCircle,
 } from "lucide-react";
@@ -32,10 +33,12 @@ import {
   getCategoryRevenue,
   getPaymentMethods,
   getPeakHours,
+  getInventoryConsumption,
 } from "../../services/admin.service";
 
 const timeRanges = [
   { key: "today", label: "Hôm nay" },
+          { key: "inventory", label: "Tiêu hao kho", icon: Package },
   { key: "7days", label: "7 ngày" },
   { key: "30days", label: "30 ngày" },
   { key: "this_month", label: "Tháng này" },
@@ -127,6 +130,7 @@ function Reports() {
   const [categoryData, setCategoryData] = useState([]);
   const [paymentData, setPaymentData] = useState([]);
   const [peakHoursData, setPeakHoursData] = useState([]);
+  const [consumptionData, setConsumptionData] = useState([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -139,6 +143,7 @@ function Reports() {
         categoryRes,
         paymentRes,
         peakRes,
+        consumptionRes,
       ] = await Promise.all([
         getReportSummary(selectedRange),
         getRevenueChart(selectedRange),
@@ -146,6 +151,7 @@ function Reports() {
         getCategoryRevenue(selectedRange),
         getPaymentMethods(selectedRange),
         getPeakHours(selectedRange),
+        getInventoryConsumption(selectedRange),
       ]);
 
       setSummary(summaryRes.data);
@@ -154,6 +160,9 @@ function Reports() {
       setCategoryData(categoryRes.data);
       setPaymentData(paymentRes.data);
       setPeakHoursData(peakRes.data);
+      setConsumptionData(
+        Array.isArray(consumptionRes.data) ? consumptionRes.data : [],
+      );
     } catch (err) {
       console.error("Report fetch error:", err);
       setError(err.response?.data?.error || "Không thể tải dữ liệu báo cáo");
@@ -167,6 +176,11 @@ function Reports() {
   }, [fetchData]);
 
   const totalTopRevenue = topItems.reduce((sum, d) => sum + d.totalRevenue, 0);
+  const consumptionSorted = [...consumptionData].sort(
+    (a, b) => b.total_consumed - a.total_consumed,
+  );
+  const maxConsumption =
+    consumptionSorted.length > 0 ? consumptionSorted[0].total_consumed : 0;
 
   if (loading) {
     return (
@@ -585,6 +599,67 @@ function Reports() {
                   </>
                 );
               })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Inventory Consumption */}
+      {activeTab === "inventory" && (
+        <div className="bg-white rounded-xl p-5 shadow-card border border-sea-100">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-semibold text-sea-800">
+                Tiêu hao nguyên liệu
+              </h2>
+              <p className="text-sm text-sea-500">
+                Tổng hợp từ các ca kiểm kê đã đóng.
+              </p>
+            </div>
+            <span className="text-sm text-sea-500">
+              {consumptionSorted.length} nguyên liệu
+            </span>
+          </div>
+
+          {consumptionSorted.length > 0 ? (
+            <div className="space-y-3">
+              {consumptionSorted.slice(0, 12).map((row) => {
+                const percent =
+                  maxConsumption > 0
+                    ? Math.round((row.total_consumed / maxConsumption) * 100)
+                    : 0;
+                return (
+                  <div
+                    key={row.ingredient_id}
+                    className="p-3 bg-sea-50 rounded-lg"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-sea-800">
+                          {row.ingredient_name}
+                        </p>
+                        <p className="text-xs text-sea-400">{row.unit}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-sea-700">
+                          {row.total_consumed} {row.unit}
+                        </p>
+                        <p className="text-xs text-sea-400">{percent}%</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-2 bg-white rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-sea-500 rounded-full"
+                        style={{ width: `${percent}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-10 text-sea-400">
+              Chưa có dữ liệu tiêu hao
             </div>
           )}
         </div>

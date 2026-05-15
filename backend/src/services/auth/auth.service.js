@@ -1,5 +1,14 @@
 import supabase, { supabaseAdmin } from "../../config/supabase.js";
 import { UserModel } from "../../models/user.model.js";
+import knex from "../../db/knex.js";
+
+const getUserPermissionKeys = async (userId) => {
+  const rows = await knex("user_permissions as up")
+    .join("permissions as p", "p.id", "up.permission_id")
+    .where("up.user_id", userId)
+    .select("p.key");
+  return rows.map((row) => row.key);
+};
 
 /**
  * Đăng ký người dùng mới bằng email và mật khẩu qua Supabase Auth.
@@ -81,12 +90,15 @@ const login = async (email, password) => {
 
   // Lấy role từ bảng users trong DB
   const dbUser = await UserModel.findById(data.session.user.id);
+  const permissionKeys = dbUser ? await getUserPermissionKeys(dbUser.id) : [];
   const session = {
     ...data.session,
     user: {
       ...data.session.user,
+      role: dbUser?.role || "guest",
       db_role: dbUser?.role || "guest",
       full_name: dbUser?.full_name || null,
+      permissions: permissionKeys,
     },
   };
 
@@ -153,9 +165,11 @@ const loginWithGoogle = async (accessToken) => {
       access_token: accessToken,
       user: {
         ...authUser,
+        role: dbUser.role,
         db_role: dbUser.role,
         full_name: dbUser.full_name,
         phone: dbUser.phone,
+        permissions: [],
       },
     },
     error: null,

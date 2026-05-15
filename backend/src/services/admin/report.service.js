@@ -333,6 +333,34 @@ const getPeakHours = async (range) => {
   }));
 };
 
+/**
+ * Inventory consumption: tổng tiêu hao theo nguyên liệu (từ ca kiểm kê)
+ */
+const getInventoryConsumption = async (range) => {
+  const { from, to } = getDateRange(range);
+
+  const rows = await knex("inventory_shift_items as isi")
+    .join("inventory_shifts as ish", "ish.id", "isi.shift_id")
+    .join("ingredients as ing", "ing.id", "isi.ingredient_id")
+    .where("ish.status", "closed")
+    .whereBetween("ish.closed_at", [from, to])
+    .select(
+      "ing.id",
+      "ing.name",
+      "ing.unit",
+      knex.raw("COALESCE(SUM(isi.consumed), 0) as total_consumed"),
+    )
+    .groupBy("ing.id", "ing.name", "ing.unit")
+    .orderBy("ing.name", "asc");
+
+  return rows.map((r) => ({
+    ingredient_id: r.id,
+    ingredient_name: r.name,
+    unit: r.unit,
+    total_consumed: parseFloat(r.total_consumed) || 0,
+  }));
+};
+
 export const reportService = {
   getSummary,
   getRevenueChart,
@@ -340,4 +368,5 @@ export const reportService = {
   getCategoryRevenue,
   getPaymentMethods,
   getPeakHours,
+  getInventoryConsumption,
 };

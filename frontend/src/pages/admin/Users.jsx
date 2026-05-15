@@ -21,17 +21,26 @@ import { UserDetailsModal } from "../../components/admin/UserDetailsModal";
 const staffRoles = [
   { label: "Tất cả", value: "Tat ca" },
   { label: "Nhân viên", value: "staff" },
-  { label: "Thu ngân", value: "cashier" },
   { label: "Bếp", value: "chef" },
   { label: "Quản lý", value: "admin" },
 ];
 
-const roles = staffRoles;
+const ROLE_LABELS = {
+  guest: "Thực khách",
+  staff: "Nhân viên",
+  chef: "Bếp",
+  admin: "Quản lý",
+};
+
+const hasCashierPermission = (user) =>
+  Array.isArray(user?.permissions) &&
+  user.permissions.some((permission) =>
+    String(permission).startsWith("cashier."),
+  );
 
 const roleColors = {
   guest: "bg-sea-100 text-sea-700",
   staff: "bg-gold-100 text-gold-700",
-  cashier: "bg-coral-100 text-coral-700",
   chef: "bg-orange-100 text-orange-700",
   admin: "bg-crimson-100 text-crimson-700",
 };
@@ -260,6 +269,9 @@ function Users() {
                   Vai trò
                 </th>
                 <th className="text-left py-4 px-6 text-xs font-semibold uppercase tracking-wider text-sea-600">
+                  Quyền bổ sung
+                </th>
+                <th className="text-left py-4 px-6 text-xs font-semibold uppercase tracking-wider text-sea-600">
                   Trạng thái
                 </th>
                 <th className="text-left py-4 px-6 text-xs font-semibold uppercase tracking-wider text-sea-600 text-center">
@@ -270,13 +282,13 @@ function Users() {
             <tbody className="divide-y divide-sea-50">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-sea-400">
+                  <td colSpan={6} className="text-center py-12 text-sea-400">
                     Đang tải dữ liệu...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12">
+                  <td colSpan={6} className="text-center py-12">
                     <User className="w-10 h-10 text-sea-200 mx-auto mb-2" />
                     <p className="text-sea-400 text-sm">
                       Không tìm thấy kết quả nào
@@ -335,9 +347,17 @@ function Users() {
                       <span
                         className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase ${roleColors[user.role] || "bg-sea-100 text-sea-500"}`}
                       >
-                        {roles.find((r) => r.value === user.role)?.label ||
-                          user.role}
+                        {ROLE_LABELS[user.role] || user.role}
                       </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      {hasCashierPermission(user) ? (
+                        <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-coral-50 text-coral-700">
+                          Thu ngân
+                        </span>
+                      ) : (
+                        <span className="text-xs text-sea-400">—</span>
+                      )}
                     </td>
                     <td className="py-4 px-6">
                       <span

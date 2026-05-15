@@ -60,6 +60,16 @@ const getPeakHours = async (req, res, next) => {
   }
 };
 
+const getInventoryConsumption = async (req, res, next) => {
+  try {
+    const { range = "7days" } = req.query;
+    const data = await reportService.getInventoryConsumption(range);
+    res.status(200).json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const reportController = {
   getSummary,
   getRevenueChart,
@@ -67,4 +77,5 @@ export const reportController = {
   getCategoryRevenue,
   getPaymentMethods,
   getPeakHours,
+  getInventoryConsumption,
 };
