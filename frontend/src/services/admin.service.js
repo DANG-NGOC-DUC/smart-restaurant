@@ -233,6 +233,16 @@ export const getIngredientDishes = (id) => {
   return api.get(`/admin/ingredients/${id}/dishes`);
 };
 
+// Phân tích nguyên liệu từ văn bản (POST /api/admin/ingredients/ai-parse)
+export const parseIngredientsAi = (text) => {
+  return api.post("/admin/ingredients/ai-parse", { text });
+};
+
+// Nhập liệu hàng loạt (POST /api/admin/ingredients/bulk-upsert)
+export const bulkUpsertIngredients = (items) => {
+  return api.post("/admin/ingredients/bulk-upsert", { items });
+};
+
 // ==================== INVENTORY ====================
 
 // Lấy tất cả tồn kho (GET /api/admin/inventory)

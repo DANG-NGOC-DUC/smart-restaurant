@@ -1,4 +1,7 @@
 import { ingredientService } from "../../services/admin/ingredient.service.js";
+import {
+  parseIngredientsFromText,
+} from "../../services/admin/ingredientAi.service.js";
 
 const getAllIngredients = async (req, res, next) => {
   try {
@@ -80,6 +83,35 @@ const getRelatedDishes = async (req, res, next) => {
   }
 };
 
+const parseAiIngredients = async (req, res, next) => {
+  try {
+    const { text } = req.body || {};
+    const result = await parseIngredientsFromText(text || "");
+    res.status(200).json(result);
+  } catch (error) {
+    if (error.message.includes("GEMINI_API_KEY")) {
+      return res.status(500).json({ error: error.message });
+    }
+    if (error.message.includes("Nội dung nhập liệu")) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
+const bulkUpsertIngredients = async (req, res, next) => {
+  try {
+    const { items } = req.body || {};
+    const result = await ingredientService.bulkUpsertIngredients(items || []);
+    res.status(200).json(result);
+  } catch (error) {
+    if (error.message.includes("Danh sách nguyên liệu")) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
 export const ingredientController = {
   getAllIngredients,
   getIngredientById,
@@ -87,4 +119,6 @@ export const ingredientController = {
   updateIngredient,
   deleteIngredient,
   getRelatedDishes,
+  parseAiIngredients,
+  bulkUpsertIngredients,
 };

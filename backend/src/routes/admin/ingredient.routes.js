@@ -13,6 +13,22 @@ router.get(
   ingredientController.getAllIngredients,
 );
 
+// POST /api/admin/ingredients/ai-parse
+router.post(
+  "/ai-parse",
+  auth,
+  allowRoles("admin"),
+  ingredientController.parseAiIngredients,
+);
+
+// POST /api/admin/ingredients/bulk-upsert
+router.post(
+  "/bulk-upsert",
+  auth,
+  allowRoles("admin"),
+  ingredientController.bulkUpsertIngredients,
+);
+
 // GET /api/admin/ingredients/:id
 router.get(
   "/:id",

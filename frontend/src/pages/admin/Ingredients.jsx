@@ -20,6 +20,7 @@ import {
   PlayCircle,
   CheckCircle2,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { useAdminIngredients } from "../../hooks/admin/ingredient";
 import { useAdminInventory } from "../../hooks/admin/inventory";
@@ -30,6 +31,7 @@ import {
   closeInventoryShift,
 } from "../../services/admin.service";
 import IngredientFormModal from "../../components/admin/IngredientFormModal";
+import IngredientAiImportModal from "../../components/admin/IngredientAiImportModal";
 
 const TABS = [
   { key: "all", label: "Tất cả" },
@@ -45,6 +47,7 @@ function Ingredients() {
     createIngredient,
     updateIngredient,
     deleteIngredient,
+    refetch: refetchIngredients,
   } = useAdminIngredients();
 
   const {
@@ -76,6 +79,7 @@ function Ingredients() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
   const [editingItem, setEditingItem] = useState(null);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   // Stock modal
   const [stockModalOpen, setStockModalOpen] = useState(false);
@@ -220,6 +224,11 @@ function Ingredients() {
     }
   };
 
+  const handleAiCompleted = async () => {
+    await refetchIngredients();
+    await refetchInventory();
+  };
+
   const handleDelete = async (id) => {
     await deleteIngredient(id);
     setDeleteConfirm(null);
@@ -227,17 +236,27 @@ function Ingredients() {
 
   // Stock handlers
   const handleOpenStock = (ing, mode) => {
+    const current = stockMap[ing.id]?.current_stock;
     setStockTarget(ing);
     setStockMode(mode);
-    setStockAmount("");
+    setStockAmount(
+      mode === "set" && current !== undefined && current !== null
+        ? String(current)
+        : "",
+    );
     setStockError(null);
     setStockModalOpen(true);
   };
 
   const handleStockSubmit = async () => {
-    const val = Number(stockAmount);
+    const raw = stockAmount.trim();
+    if (raw === "") {
+      setStockError("Vui lòng nhập số lượng.");
+      return;
+    }
+    const val = Number(raw);
     if (
-      isNaN(val) ||
+      Number.isNaN(val) ||
       (stockMode === "add" && val <= 0) ||
       (stockMode === "set" && val < 0)
     ) {
@@ -394,13 +413,22 @@ function Ingredients() {
             Quản lý nguyên liệu và theo dõi tồn kho
           </p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-sea-500 text-white rounded-lg hover:bg-sea-600 transition-colors font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm nguyên liệu
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setAiModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-coral-500 text-white rounded-lg hover:bg-coral-600 transition-colors font-medium"
+          >
+            <Sparkles className="w-5 h-5" />
+            Nhập nhanh AI
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-sea-500 text-white rounded-lg hover:bg-sea-600 transition-colors font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm nguyên liệu
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -833,12 +861,17 @@ function Ingredients() {
                 onChange={(e) => setStockAmount(e.target.value)}
                 placeholder={
                   stockMode === "add"
-                    ? "Nhập số lượng thêm vào"
-                    : "Nhập số lượng mới"
+                    ? "Nhập số lượng cộng thêm"
+                    : "Nhập tổng tồn mới"
                 }
                 className="w-full px-3 py-2.5 border border-sea-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sea-500 focus:border-transparent"
                 autoFocus
               />
+              {stockMode === "set" && (
+                <p className="mt-2 text-xs text-sea-500">
+                  Đây là số lượng tồn mới, không phải số cộng thêm.
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -1016,10 +1049,7 @@ function Ingredients() {
                         step="0.001"
                         value={row.closing_stock}
                         onChange={(e) =>
-                          handleClosingChange(
-                            row.ingredient_id,
-                            e.target.value,
-                          )
+                          handleClosingChange(row.ingredient_id, e.target.value)
                         }
                         className="w-full px-3 py-2 border border-sea-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sea-500"
                       />
@@ -1055,6 +1085,13 @@ function Ingredients() {
         ingredient={editingItem}
         onSubmit={handleSubmit}
         mode={modalMode}
+      />
+
+      <IngredientAiImportModal
+        open={aiModalOpen}
+        onOpenChange={setAiModalOpen}
+        existingIngredients={ingredients}
+        onCompleted={handleAiCompleted}
       />
     </div>
   );
