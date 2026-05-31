@@ -2,19 +2,27 @@ import express from "express";
 import { cashierController } from "../../controllers/cashier/cashier.controller.js";
 import { auth } from "../../middlewares/auth.middleware.js";
 import { allowRoles } from "../../middlewares/role.middleware.js";
+import { requirePermission } from "../../middlewares/permission.middleware.js";
 
 const router = express.Router();
 
 // ===== Danh sách bàn =====
 // GET /api/cashier/tables
-router.get("/tables", auth, allowRoles("cashier"), cashierController.getTables);
+router.get(
+  "/tables",
+  auth,
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.tables.read"),
+  cashierController.getTables,
+);
 
 // ===== Chi tiết đơn hàng của bàn =====
 // GET /api/cashier/tables/:tableId/orders
 router.get(
   "/tables/:tableId/orders",
   auth,
-  allowRoles("cashier"),
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.orders.read"),
   cashierController.getTableOrders,
 );
 
@@ -23,7 +31,8 @@ router.get(
 router.patch(
   "/orders/:orderId/approve",
   auth,
-  allowRoles("cashier"),
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.orders.approve"),
   cashierController.approveOrder,
 );
 
@@ -32,7 +41,8 @@ router.patch(
 router.patch(
   "/order-items/:itemId/cancel",
   auth,
-  allowRoles("cashier"),
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.order_items.cancel"),
   cashierController.cancelOrderItem,
 );
 
@@ -41,7 +51,8 @@ router.patch(
 router.post(
   "/tables/:tableId/checkout",
   auth,
-  allowRoles("cashier"),
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.checkout"),
   cashierController.checkoutTable,
 );
 
@@ -50,7 +61,8 @@ router.post(
 router.get(
   "/reservations",
   auth,
-  allowRoles("cashier"),
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.reservations.read"),
   cashierController.getReservations,
 );
 
@@ -58,7 +70,8 @@ router.get(
 router.patch(
   "/reservations/:id/confirm",
   auth,
-  allowRoles("cashier"),
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.reservations.confirm"),
   cashierController.confirmReservation,
 );
 
@@ -66,7 +79,8 @@ router.patch(
 router.patch(
   "/reservations/:id/reject",
   auth,
-  allowRoles("cashier"),
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.reservations.reject"),
   cashierController.rejectReservation,
 );
 
@@ -75,7 +89,8 @@ router.patch(
 router.get(
   "/service-requests",
   auth,
-  allowRoles("cashier"),
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.service_requests.read"),
   cashierController.getServiceRequests,
 );
 
@@ -83,7 +98,8 @@ router.get(
 router.patch(
   "/service-requests/:requestId/resolve",
   auth,
-  allowRoles("cashier"),
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.service_requests.resolve"),
   cashierController.resolveServiceRequest,
 );
 

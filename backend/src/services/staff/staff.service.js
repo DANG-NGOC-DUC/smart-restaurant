@@ -249,7 +249,7 @@ const approveOrder = async (orderId) => {
       .update({ status: "preparing" });
 
     // Trừ tồn kho ngay khi duyệt
-    await orderService.deductInventoryForOrder(orderId);
+    await orderService.deductInventoryForOrder(orderId, trx);
 
     return order;
   });
@@ -532,7 +532,7 @@ const createOrderForTable = async (tableId, items, staffId = null) => {
     order.total_price = totalPrice;
 
     // ── 8. Trừ tồn kho ngay khi tạo order ─────────────────────
-    await orderService.deductInventoryForOrder(orderId);
+    await orderService.deductInventoryForOrder(orderId, trx);
 
     return { session, order, orderItems };
   });

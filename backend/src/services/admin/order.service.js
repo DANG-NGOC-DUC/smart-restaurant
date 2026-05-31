@@ -4,6 +4,9 @@ import { OrderItemModel } from "../../models/orderItem.model.js";
 import { MenuItemIngredientModel } from "../../models/menuItemIngredient.model.js";
 import { InventoryModel } from "../../models/inventory.model.js";
 import { MenuItemVariantModel } from "../../models/menuItemVariant.model.js";
+import {
+  refreshAvailabilityForMenuItems,
+} from "../shared/menuAvailability.service.js";
 
 /**
  * Lấy tất cả orders (có thể lọc theo status)
@@ -249,68 +252,119 @@ const updateOrderStatus = async (id, newStatus) => {
  * Trừ tồn kho cho tất cả items trong order
  * Được gọi khi tạo order (từ staff hoặc sau khi duyệt QR)
  */
-const deductInventoryForOrder = async (orderId) => {
-  const items = await OrderItemModel.findByOrder(orderId);
+const deductInventoryForOrder = async (orderId, trx = null) => {
+  const run = async (db) => {
+    const items = await OrderItemModel.findByOrder(orderId, db);
+    const menuItemIds = new Set();
 
-  for (const item of items) {
-    if (item.status === "cancelled") continue;
+    for (const item of items) {
+      if (item.status === "cancelled") continue;
+      menuItemIds.add(item.menu_item_id);
 
-    // Lấy hệ số nhân nguyên liệu từ variant (nếu có)
-    let multiplier = 1.0;
-    if (item.variant_id) {
-      const variant = await MenuItemVariantModel.findById(item.variant_id);
-      if (variant)
-        multiplier = parseFloat(variant.ingredient_multiplier) || 1.0;
-    }
-
-    const recipe = await MenuItemIngredientModel.findByMenuItemId(
-      item.menu_item_id,
-    );
-
-    for (const ing of recipe) {
-      const totalNeeded =
-        parseFloat(ing.quantity_needed) * item.quantity * multiplier;
-
-      const inv = await InventoryModel.findByIngredientId(ing.ingredient_id);
-      if (!inv || parseFloat(inv.current_stock) < totalNeeded) {
-        throw new Error(
-          `Không đủ tồn kho nguyên liệu "${ing.ingredient_name}" ` +
-            `(cần ${totalNeeded} ${ing.unit}, còn ${inv ? inv.current_stock : 0} ${ing.unit}).`,
+      // Lấy hệ số nhân nguyên liệu từ variant (nếu có)
+      let multiplier = 1.0;
+      if (item.variant_id) {
+        const variant = await MenuItemVariantModel.findById(
+          item.variant_id,
+          db,
         );
+        if (variant)
+          multiplier = parseFloat(variant.ingredient_multiplier) || 1.0;
       }
 
-      await InventoryModel.deductStock(ing.ingredient_id, totalNeeded);
+      const recipe = await MenuItemIngredientModel.findByMenuItemId(
+        item.menu_item_id,
+        db,
+      );
+
+      for (const ing of recipe) {
+        if (!ing.is_critical) continue;
+
+        const totalNeeded =
+          parseFloat(ing.quantity_needed) * item.quantity * multiplier;
+
+        const inv = await InventoryModel.findByIngredientId(
+          ing.ingredient_id,
+          db,
+        );
+        if (!inv || parseFloat(inv.current_stock) < totalNeeded) {
+          throw new Error(
+            `Không đủ tồn kho nguyên liệu "${ing.ingredient_name}" ` +
+              `(cần ${totalNeeded} ${ing.unit}, còn ${inv ? inv.current_stock : 0} ${ing.unit}).`,
+          );
+        }
+
+        const updated = await InventoryModel.deductStock(
+          ing.ingredient_id,
+          totalNeeded,
+          db,
+        );
+        if (!updated) {
+          throw new Error(
+            `Không đủ tồn kho nguyên liệu "${ing.ingredient_name}" ` +
+              `(cần ${totalNeeded} ${ing.unit}, còn ${inv ? inv.current_stock : 0} ${ing.unit}).`,
+          );
+        }
+      }
     }
+
+    await refreshAvailabilityForMenuItems([...menuItemIds], db);
+  };
+
+  if (trx) {
+    await run(trx);
+    return;
   }
+
+  await knex.transaction(run);
 };
 
 /**
  * Hoàn tồn kho khi hủy order — hoàn cho items đang preparing hoặc đã nấu (chưa phục vụ)
  */
-const restoreInventoryForOrder = async (orderId) => {
-  const items = await OrderItemModel.findByOrder(orderId);
+const restoreInventoryForOrder = async (orderId, trx = null) => {
+  const run = async (db) => {
+    const items = await OrderItemModel.findByOrder(orderId, db);
+    const menuItemIds = new Set();
 
-  for (const item of items) {
-    if (item.status !== "preparing" && item.status !== "cooked") continue;
+    for (const item of items) {
+      if (item.status !== "preparing" && item.status !== "cooked") continue;
+      menuItemIds.add(item.menu_item_id);
 
-    // Lấy hệ số nhân từ variant
-    let multiplier = 1.0;
-    if (item.variant_id) {
-      const variant = await MenuItemVariantModel.findById(item.variant_id);
-      if (variant)
-        multiplier = parseFloat(variant.ingredient_multiplier) || 1.0;
+      // Lấy hệ số nhân từ variant
+      let multiplier = 1.0;
+      if (item.variant_id) {
+        const variant = await MenuItemVariantModel.findById(
+          item.variant_id,
+          db,
+        );
+        if (variant)
+          multiplier = parseFloat(variant.ingredient_multiplier) || 1.0;
+      }
+
+      const recipe = await MenuItemIngredientModel.findByMenuItemId(
+        item.menu_item_id,
+        db,
+      );
+
+      for (const ing of recipe) {
+        if (!ing.is_critical) continue;
+
+        const totalRestore =
+          parseFloat(ing.quantity_needed) * item.quantity * multiplier;
+        await InventoryModel.addStock(ing.ingredient_id, totalRestore, db);
+      }
     }
 
-    const recipe = await MenuItemIngredientModel.findByMenuItemId(
-      item.menu_item_id,
-    );
+    await refreshAvailabilityForMenuItems([...menuItemIds], db);
+  };
 
-    for (const ing of recipe) {
-      const totalRestore =
-        parseFloat(ing.quantity_needed) * item.quantity * multiplier;
-      await InventoryModel.addStock(ing.ingredient_id, totalRestore);
-    }
+  if (trx) {
+    await run(trx);
+    return;
   }
+
+  await knex.transaction(run);
 };
 
 export const orderService = {

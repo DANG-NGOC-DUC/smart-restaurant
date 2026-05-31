@@ -24,13 +24,13 @@ export const InventoryModel = {
       .orderBy("ingredients.name", "asc");
   },
 
-  async findByIngredientId(ingredientId) {
-    return knex(TABLE).where({ ingredient_id: ingredientId }).first();
+  async findByIngredientId(ingredientId, trx = knex) {
+    return trx(TABLE).where({ ingredient_id: ingredientId }).first();
   },
 
   // Cập nhật số lượng tồn kho
-  async updateStock(ingredientId, newStock) {
-    const [updated] = await knex(TABLE)
+  async updateStock(ingredientId, newStock, trx = knex) {
+    const [updated] = await trx(TABLE)
       .where({ ingredient_id: ingredientId })
       .update({
         current_stock: newStock,
@@ -41,9 +41,10 @@ export const InventoryModel = {
   },
 
   // Trừ kho khi order (trừ số lượng)
-  async deductStock(ingredientId, amount) {
-    const [updated] = await knex(TABLE)
+  async deductStock(ingredientId, amount, trx = knex) {
+    const [updated] = await trx(TABLE)
       .where({ ingredient_id: ingredientId })
+      .whereRaw("current_stock >= ?", [amount])
       .update({
         current_stock: knex.raw("current_stock - ?", [amount]),
         last_updated: knex.fn.now(),
@@ -53,8 +54,8 @@ export const InventoryModel = {
   },
 
   // Nhập kho (cộng số lượng)
-  async addStock(ingredientId, amount) {
-    const [updated] = await knex(TABLE)
+  async addStock(ingredientId, amount, trx = knex) {
+    const [updated] = await trx(TABLE)
       .where({ ingredient_id: ingredientId })
       .update({
         current_stock: knex.raw("current_stock + ?", [amount]),
@@ -65,11 +66,22 @@ export const InventoryModel = {
   },
 
   // Kiểm tra món ăn có đủ nguyên liệu không (tính theo hệ số variant)
-  async checkAvailability(menuItemId, ingredientMultiplier = 1.0) {
-    const result = await knex("menu_item_ingredients as mii")
+  async checkAvailability(menuItemId, ingredientMultiplier = 1.0, options = {}) {
+    const { criticalOnly = false } = options;
+
+    const query = knex("menu_item_ingredients as mii")
       .join(`${TABLE} as inv`, "inv.ingredient_id", "mii.ingredient_id")
-      .where("mii.menu_item_id", menuItemId)
-      .select("mii.ingredient_id", "mii.quantity_needed", "inv.current_stock");
+      .where("mii.menu_item_id", menuItemId);
+
+    if (criticalOnly) {
+      query.where("mii.is_critical", true);
+    }
+
+    const result = await query.select(
+      "mii.ingredient_id",
+      "mii.quantity_needed",
+      "inv.current_stock",
+    );
 
     // Nếu món không có công thức nguyên liệu → luôn available
     if (result.length === 0) return true;

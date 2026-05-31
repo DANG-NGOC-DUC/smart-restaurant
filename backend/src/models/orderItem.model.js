@@ -11,8 +11,8 @@ export const OrderItemModel = {
     return created;
   },
 
-  async findByOrder(order_id) {
-    return knex(TABLE).where({ order_id });
+  async findByOrder(order_id, trx = knex) {
+    return trx(TABLE).where({ order_id });
   },
 
   // Lấy order items kèm tên món ăn

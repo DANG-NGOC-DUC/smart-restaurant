@@ -18,8 +18,8 @@ export const MenuItemVariantModel = {
       .orderBy("created_at", "asc");
   },
 
-  async findById(id) {
-    return knex(TABLE).where({ id }).first();
+  async findById(id, trx = knex) {
+    return trx(TABLE).where({ id }).first();
   },
 
   async findAvailableByMenuItem(menu_item_id) {

@@ -5,18 +5,14 @@ import {
   Clock,
   LogOut,
   Bell,
-  ChefHat,
   CookingPot,
   CircleCheckBig,
   Ban,
-  Printer,
   CreditCard,
   Receipt,
   Info,
   MoreVertical,
   Armchair,
-  CircleDot,
-  Timer,
   Users,
   AlertCircle,
   Loader2,
@@ -86,6 +82,23 @@ const getElapsedTime = (startedAt) => {
   return `${h}:${m}:${s}`;
 };
 
+const POS_STYLE = {
+  "--pos-bg": "#f6f3ee",
+  "--pos-panel": "#ffffff",
+  "--pos-ink": "#102b31",
+  "--pos-muted": "#5e6d73",
+  "--pos-accent": "#1a6b7c",
+  "--pos-accent-2": "#f28b6d",
+  "--pos-warning": "#f2b255",
+  "--pos-ring": "rgba(26, 107, 124, 0.18)",
+  "--pos-soft": "#f2f5f4",
+  backgroundColor: "#f6f3ee",
+  backgroundImage:
+    "radial-gradient(60% 60% at 8% 6%, rgba(26, 107, 124, 0.14), transparent 60%), radial-gradient(50% 50% at 92% 0%, rgba(242, 139, 109, 0.18), transparent 60%), linear-gradient(180deg, #f8f6f1 0%, #eef2f2 100%)",
+  fontFamily: '"Be Vietnam Pro", "Sora", sans-serif',
+  color: "var(--pos-ink)",
+};
+
 // ═══════════════════════════════════════════════
 //  SUB-COMPONENTS
 // ═══════════════════════════════════════════════
@@ -143,7 +156,7 @@ function ItemStatusBadge({ status }) {
 }
 
 /* ──── Table Card ──── */
-function TableCard({ table, isSelected, onClick }) {
+function TableCard({ table, isSelected, onClick, delay = 0 }) {
   const {
     name,
     code,
@@ -160,17 +173,21 @@ function TableCard({ table, isSelected, onClick }) {
   // Base classes per status
   const statusStyles = {
     empty:
-      "bg-white border border-slate-200 hover:border-sea-400 hover:shadow-md",
-    serving: "bg-white border-2 border-sea-600 shadow-sm hover:shadow-md",
-    payment: "bg-yellow-50 border border-yellow-300 hover:shadow-md",
+      "bg-[var(--pos-panel)] border border-slate-200 hover:border-slate-300 hover:shadow-md",
+    serving:
+      "bg-[var(--pos-panel)] border border-[var(--pos-accent)] shadow-sm hover:shadow-md",
+    payment: "bg-[#fff3dd] border border-[#f2c27a] shadow-sm hover:shadow-md",
   };
 
-  const selectedRing = isSelected ? "ring-2 ring-sea-500/30 ring-offset-2" : "";
+  const selectedRing = isSelected
+    ? "ring-2 ring-[var(--pos-ring)] ring-offset-2"
+    : "";
 
   return (
     <div
       onClick={onClick}
-      className={`relative rounded-xl p-4 cursor-pointer transition-all flex flex-col h-[140px] justify-between ${statusStyles[status] || statusStyles.empty} ${selectedRing}`}
+      style={{ animationDelay: `${delay}ms` }}
+      className={`relative rounded-xl p-4 cursor-pointer transition-all flex flex-col h-[132px] justify-between pos-stagger ${statusStyles[status] || statusStyles.empty} ${selectedRing} hover:-translate-y-0.5`}
     >
       {/* Pending notification bell */}
       {status === "payment" && (
@@ -190,9 +207,9 @@ function TableCard({ table, isSelected, onClick }) {
         <span
           className={`font-bold text-sm ${
             status === "serving"
-              ? "text-sea-600"
+              ? "text-[var(--pos-accent)]"
               : status === "payment"
-                ? "text-yellow-700"
+                ? "text-amber-700"
                 : "text-slate-400"
           }`}
         >
@@ -203,12 +220,12 @@ function TableCard({ table, isSelected, onClick }) {
           <Armchair size={20} className="text-slate-300" />
         )}
         {status === "serving" && (
-          <span className="bg-sea-100 text-sea-700 text-[10px] px-2 py-0.5 rounded font-bold">
+          <span className="bg-[color:var(--pos-soft)] text-[var(--pos-accent)] text-[10px] px-2 py-0.5 rounded font-bold">
             Phục vụ
           </span>
         )}
         {status === "payment" && (
-          <span className="bg-yellow-100 text-yellow-700 text-[10px] px-2 py-0.5 rounded font-bold">
+          <span className="bg-[#ffe8c4] text-amber-800 text-[10px] px-2 py-0.5 rounded font-bold">
             Thanh toán
           </span>
         )}
@@ -224,7 +241,7 @@ function TableCard({ table, isSelected, onClick }) {
             {capacity} ghế
           </span>
         ) : status === "payment" ? (
-          <span className="text-xs text-yellow-600 font-medium">
+          <span className="text-xs text-amber-700 font-medium">
             Chờ thanh toán
           </span>
         ) : (
@@ -250,32 +267,35 @@ function TableCard({ table, isSelected, onClick }) {
 /* ──── Filter Bar ──── */
 function FilterBar({ active, onChange, counts }) {
   return (
-    <div className="px-6 py-3 bg-white border-b border-slate-200 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+    <div className="px-6 py-3 bg-white/80 backdrop-blur border-b border-slate-200 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
       {FILTERS.map((f) => {
         const isActive = active === f.key;
         const count = counts[f.key];
 
         // Specific styles per filter type
         let cls =
-          "px-4 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-2";
+          "px-4 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-2 border";
 
         if (isActive) {
           if (f.key === "payment") {
-            cls += " bg-yellow-500 text-white shadow-sm";
+            cls +=
+              " bg-[var(--pos-warning)] text-white border-transparent shadow-sm";
           } else if (f.key === "pending") {
-            cls += " bg-orange-500 text-white shadow-sm";
+            cls += " bg-orange-500 text-white border-transparent shadow-sm";
           } else {
-            cls += " bg-sea-800 text-white shadow-sm";
+            cls +=
+              " bg-[var(--pos-accent)] text-white border-transparent shadow-sm";
           }
         } else {
           if (f.key === "payment") {
             cls +=
-              " bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border border-yellow-200";
+              " bg-[#fff7e6] hover:bg-[#ffeccc] text-amber-800 border-[#f2d9ac]";
           } else if (f.key === "pending") {
             cls +=
-              " bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200";
+              " bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200";
           } else {
-            cls += " bg-slate-100 hover:bg-slate-200 text-slate-600";
+            cls +=
+              " bg-white hover:bg-slate-100 text-[color:var(--pos-muted)] border-slate-200";
           }
         }
 
@@ -292,7 +312,7 @@ function FilterBar({ active, onChange, counts }) {
                       ? "bg-yellow-600 text-white"
                       : f.key === "pending"
                         ? "bg-orange-500 text-white"
-                        : "bg-sea-700 text-white"
+                        : "bg-[var(--pos-accent)] text-white"
                 }`}
               >
                 {count}
@@ -310,12 +330,28 @@ function OrderPanel({
   table,
   orderData,
   loadingOrders,
+  canViewOrders,
+  canApproveOrders,
+  canCancelItems,
+  canCheckout,
+  canPrintBill,
   onApproveOrder,
   onCancelItem,
   onCheckout,
   onPrintBill,
   actionLoading,
 }) {
+  if (!canViewOrders) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3 px-8">
+        <Info size={48} strokeWidth={1.2} />
+        <p className="text-center text-sm">
+          Bạn chưa được cấp quyền xem đơn hàng.
+        </p>
+      </div>
+    );
+  }
+
   if (!table || table.status === "empty") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3 px-8">
@@ -362,7 +398,7 @@ function OrderPanel({
   return (
     <>
       {/* Panel Header */}
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-[var(--pos-panel)] shrink-0">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h2 className="text-xl font-bold text-slate-900">
@@ -371,8 +407,8 @@ function OrderPanel({
             <span
               className={`text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide ${
                 isPayment
-                  ? "bg-yellow-100 text-yellow-700"
-                  : "bg-sea-100 text-sea-700"
+                  ? "bg-[#ffe8c4] text-amber-800"
+                  : "bg-[var(--pos-soft)] text-[var(--pos-accent)]"
               }`}
             >
               {getStatusLabel(table.status)}
@@ -433,16 +469,22 @@ function OrderPanel({
                 </div>
                 <button
                   onClick={() => onApproveOrder(order.id)}
-                  disabled={actionLoading}
-                  className="w-full py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+                  disabled={actionLoading || !canApproveOrders}
+                  className={`w-full py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm ${
+                    canApproveOrders
+                      ? "bg-orange-500 hover:bg-orange-600 text-white"
+                      : "bg-orange-100 text-orange-600 cursor-not-allowed"
+                  }`}
                 >
                   {actionLoading ? (
                     <Loader2 size={16} className="animate-spin" />
-                  ) : (
+                  ) : canApproveOrders ? (
                     <>
                       <CircleCheckBig size={16} />
                       Xác nhận đơn — Gửi bếp
                     </>
+                  ) : (
+                    "Chỉ xem"
                   )}
                 </button>
               </div>
@@ -488,7 +530,7 @@ function OrderPanel({
                     </span>
                   </div>
                   {item.variant_label && (
-                    <p className="text-[11px] text-sea-600 font-medium mt-0.5">
+                    <p className="text-[11px] text-[var(--pos-accent)] font-medium mt-0.5">
                       {item.variant_label}
                     </p>
                   )}
@@ -500,17 +542,18 @@ function OrderPanel({
                   <div className="mt-1.5 flex items-center gap-2">
                     <ItemStatusBadge status={item.status} />
                     {/* Nút hủy món — chỉ hiện khi đang nấu hoặc đã nấu */}
-                    {(item.status === "preparing" ||
-                      item.status === "cooked") && (
-                      <button
-                        onClick={() => onCancelItem(item.id)}
-                        disabled={actionLoading}
-                        className="ml-auto text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded transition-colors"
-                        title="Hủy món"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
+                    {canCancelItems &&
+                      (item.status === "preparing" ||
+                        item.status === "cooked") && (
+                        <button
+                          onClick={() => onCancelItem(item.id)}
+                          disabled={actionLoading}
+                          className="ml-auto text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded transition-colors"
+                          title="Hủy món"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
                   </div>
                 </div>
               </div>
@@ -520,7 +563,7 @@ function OrderPanel({
       </div>
 
       {/* Summary & Actions */}
-      <div className="bg-slate-50 p-5 border-t border-slate-200 shrink-0">
+      <div className="bg-[var(--pos-soft)] p-5 border-t border-slate-200 shrink-0">
         {/* Price summary */}
         <div className="space-y-1.5 mb-4">
           <div className="flex justify-between text-sm text-slate-500">
@@ -543,7 +586,7 @@ function OrderPanel({
             <span className="font-bold text-base text-slate-800">
               Tổng phải thu
             </span>
-            <span className="font-bold text-2xl text-sea-700">
+            <span className="font-bold text-2xl text-[var(--pos-accent)]">
               {formatVND(grandTotal)}
             </span>
           </div>
@@ -551,36 +594,57 @@ function OrderPanel({
 
         {/* Action Buttons — depend on table status */}
         {(isServing || isPayment) && (
-          <div className="grid grid-cols-5 gap-3">
-            <button
-              onClick={() =>
-                onPrintBill &&
-                onPrintBill(table, allItems, {
-                  subtotal,
-                  vat,
-                  discount,
-                  grandTotal,
-                })
-              }
-              className="col-span-2 py-3 px-3 rounded-xl bg-sea-100 text-sea-800 font-bold text-sm hover:bg-sea-200 transition-colors flex items-center justify-center gap-2"
-            >
-              <Receipt size={16} />
-              In tạm tính
-            </button>
-            <button
-              onClick={() => onCheckout(table.id)}
-              disabled={actionLoading}
-              className="col-span-3 py-3 px-4 rounded-xl bg-sea-700 text-white font-bold text-sm shadow-md shadow-sea-700/30 hover:bg-sea-800 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {actionLoading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <>
-                  <CreditCard size={18} />
-                  Thanh toán
-                </>
-              )}
-            </button>
+          <div className="space-y-2">
+            {!canPrintBill && !canCheckout && (
+              <p className="text-xs text-slate-500">
+                Bạn chưa được cấp quyền thanh toán.
+              </p>
+            )}
+            {(canPrintBill || canCheckout) && (
+              <div
+                className={`grid gap-3 ${
+                  canPrintBill && canCheckout ? "grid-cols-5" : "grid-cols-1"
+                }`}
+              >
+                {canPrintBill && (
+                  <button
+                    onClick={() =>
+                      onPrintBill &&
+                      onPrintBill(table, allItems, {
+                        subtotal,
+                        vat,
+                        discount,
+                        grandTotal,
+                      })
+                    }
+                    className={`${
+                      canCheckout ? "col-span-2" : "col-span-1"
+                    } py-3 px-3 rounded-xl bg-[var(--pos-panel)] text-[var(--pos-ink)] font-bold text-sm hover:bg-white transition-colors flex items-center justify-center gap-2 border border-slate-200`}
+                  >
+                    <Receipt size={16} />
+                    In tạm tính
+                  </button>
+                )}
+                {canCheckout && (
+                  <button
+                    onClick={() => onCheckout(table.id)}
+                    disabled={actionLoading}
+                    className={`${
+                      canPrintBill ? "col-span-3" : "col-span-1"
+                    } py-3 px-4 rounded-xl bg-[var(--pos-accent)] text-white font-bold text-sm shadow-md shadow-[#1a6b7c]/30 hover:shadow-lg hover:bg-[#155e6d] transition-all flex items-center justify-center gap-2 disabled:opacity-50`}
+                  >
+                    {actionLoading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <>
+                        <CreditCard size={18} />
+                        Thanh toán
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -610,9 +674,9 @@ function PaymentModal({ open, table, total, loading, onConfirm, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-[420px] overflow-hidden">
+      <div className="bg-[var(--pos-panel)] rounded-2xl shadow-2xl w-[420px] max-w-[90vw] overflow-hidden">
         {/* Header */}
-        <div className="bg-sea-800 px-6 py-4 flex items-center justify-between">
+        <div className="bg-[color:var(--pos-ink)] px-6 py-4 flex items-center justify-between">
           <h3 className="text-white font-bold text-lg">Thanh toán</h3>
           <button onClick={onClose} className="text-white/70 hover:text-white">
             <X size={20} />
@@ -622,7 +686,7 @@ function PaymentModal({ open, table, total, loading, onConfirm, onClose }) {
         {/* Table & Total */}
         <div className="px-6 pt-5 pb-3 text-center border-b border-slate-100">
           <p className="text-slate-500 text-sm">{table?.name || "Bàn"}</p>
-          <p className="text-3xl font-bold text-sea-700 mt-1">
+          <p className="text-3xl font-bold text-[var(--pos-accent)] mt-1">
             {formatVND(total)}
           </p>
         </div>
@@ -641,7 +705,7 @@ function PaymentModal({ open, table, total, loading, onConfirm, onClose }) {
                 onClick={() => setMethod(pm.key)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${
                   isActive
-                    ? "border-sea-500 bg-sea-50 shadow-sm"
+                    ? "border-[var(--pos-accent)] bg-[var(--pos-soft)] shadow-sm"
                     : "border-slate-200 hover:border-slate-300"
                 }`}
               >
@@ -649,12 +713,17 @@ function PaymentModal({ open, table, total, loading, onConfirm, onClose }) {
                   <Icon size={18} className="text-white" />
                 </div>
                 <span
-                  className={`font-bold text-sm ${isActive ? "text-sea-700" : "text-slate-700"}`}
+                  className={`font-bold text-sm ${
+                    isActive ? "text-[var(--pos-accent)]" : "text-slate-700"
+                  }`}
                 >
                   {pm.label}
                 </span>
                 {isActive && (
-                  <CircleCheckBig size={18} className="ml-auto text-sea-600" />
+                  <CircleCheckBig
+                    size={18}
+                    className="ml-auto text-[var(--pos-accent)]"
+                  />
                 )}
               </button>
             );
@@ -666,7 +735,7 @@ function PaymentModal({ open, table, total, loading, onConfirm, onClose }) {
           <button
             onClick={() => onConfirm(method)}
             disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-sea-700 text-white font-bold text-sm shadow-md hover:bg-sea-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3.5 rounded-xl bg-[var(--pos-accent)] text-white font-bold text-sm shadow-md hover:bg-[#155e6d] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? (
               <Loader2 size={18} className="animate-spin" />
@@ -705,7 +774,7 @@ const REQUEST_TYPE_MAP = {
   },
 };
 
-function ServiceRequestsPanel({ requests, loading, onResolve }) {
+function ServiceRequestsPanel({ requests, loading, onResolve, canResolve }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-6 text-slate-400">
@@ -750,13 +819,17 @@ function ServiceRequestsPanel({ requests, loading, onResolve }) {
                 {waitMins > 0 ? `${waitMins} phút trước` : "Vừa xong"}
               </p>
             </div>
-            <button
-              onClick={() => onResolve(req.id)}
-              className="shrink-0 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-1.5 rounded-lg transition-colors"
-              title="Xử lý xong"
-            >
-              <Check size={14} />
-            </button>
+            {canResolve ? (
+              <button
+                onClick={() => onResolve(req.id)}
+                className="shrink-0 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-1.5 rounded-lg transition-colors"
+                title="Xử lý xong"
+              >
+                <Check size={14} />
+              </button>
+            ) : (
+              <span className="text-[10px] text-slate-400">Chỉ xem</span>
+            )}
           </div>
         );
       })}
@@ -775,6 +848,8 @@ function ReservationPanel({
   onConfirm,
   onReject,
   actionLoading,
+  canConfirm,
+  canReject,
 }) {
   const [assignTableId, setAssignTableId] = useState({});
 
@@ -894,22 +969,28 @@ function ReservationPanel({
                 </div>
                 {/* Buttons */}
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => onConfirm(r.id, assignTableId[r.id] || null)}
-                    disabled={actionLoading}
-                    className="flex-1 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1 disabled:opacity-50 transition-colors"
-                  >
-                    <UserCheck size={14} />
-                    Xác nhận
-                  </button>
-                  <button
-                    onClick={() => onReject(r.id)}
-                    disabled={actionLoading}
-                    className="py-2 px-3 rounded-lg bg-white border border-red-200 text-red-500 text-xs font-bold flex items-center justify-center gap-1 hover:bg-red-50 disabled:opacity-50 transition-colors"
-                  >
-                    <XCircle size={14} />
-                    Từ chối
-                  </button>
+                  {canConfirm && (
+                    <button
+                      onClick={() =>
+                        onConfirm(r.id, assignTableId[r.id] || null)
+                      }
+                      disabled={actionLoading}
+                      className="flex-1 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1 disabled:opacity-50 transition-colors"
+                    >
+                      <UserCheck size={14} />
+                      Xác nhận
+                    </button>
+                  )}
+                  {canReject && (
+                    <button
+                      onClick={() => onReject(r.id)}
+                      disabled={actionLoading}
+                      className="py-2 px-3 rounded-lg bg-white border border-red-200 text-red-500 text-xs font-bold flex items-center justify-center gap-1 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                    >
+                      <XCircle size={14} />
+                      Từ chối
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -936,6 +1017,45 @@ export default function CashierPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  const resolvedRole = user?.role || user?.db_role;
+  const isAdmin = resolvedRole === "admin";
+  const permissionSet = new Set(user?.permissions || []);
+  const hasPermission = (key) => isAdmin || permissionSet.has(key);
+  const hasCashierPermission = isAdmin
+    ? true
+    : Array.from(permissionSet).some((permission) =>
+        String(permission).startsWith("cashier."),
+      );
+
+  const canReadTables = hasPermission("cashier.tables.read");
+  const canReadOrders = hasPermission("cashier.orders.read");
+  const canApproveOrders = hasPermission("cashier.orders.approve");
+  const canCancelItems = hasPermission("cashier.order_items.cancel");
+  const canCheckout = hasPermission("cashier.checkout");
+  const canReadReservations = hasPermission("cashier.reservations.read");
+  const canConfirmReservation = hasPermission("cashier.reservations.confirm");
+  const canRejectReservation = hasPermission("cashier.reservations.reject");
+  const canReadRequests = hasPermission("cashier.service_requests.read");
+  const canResolveRequests = hasPermission("cashier.service_requests.resolve");
+
+  const canViewTables =
+    canReadTables ||
+    canReadOrders ||
+    canApproveOrders ||
+    canCancelItems ||
+    canCheckout ||
+    canReadReservations;
+  const canViewOrders =
+    canReadOrders || canApproveOrders || canCancelItems || canCheckout;
+  const canPrintBill = canReadOrders || canCheckout;
+
+  const displayRole = isAdmin
+    ? "Quản lý"
+    : hasCashierPermission
+      ? "Thu ngân"
+      : "Nhân viên";
+  const displayName = user?.full_name || user?.email || displayRole;
+
   // ── State ──
   const [tables, setTables] = useState([]);
   const [loadingTables, setLoadingTables] = useState(true);
@@ -950,6 +1070,7 @@ export default function CashierPage() {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [reservations, setReservations] = useState([]);
   const [loadingReservations, setLoadingReservations] = useState(false);
+  const [rightPanelTab, setRightPanelTab] = useState("orders");
 
   // ── Toast helper ──
   const showToast = useCallback((type, message) => {
@@ -959,6 +1080,10 @@ export default function CashierPage() {
 
   // ── Fetch danh sách bàn ──
   const fetchTables = useCallback(async () => {
+    if (!canViewTables) {
+      setLoadingTables(false);
+      return;
+    }
     try {
       const res = await cashierApi.getTables();
       setTables(res.data);
@@ -968,44 +1093,61 @@ export default function CashierPage() {
     } finally {
       setLoadingTables(false);
     }
-  }, [showToast]);
+  }, [canViewTables, showToast]);
 
   // ── Fetch chi tiết đơn hàng khi chọn bàn ──
-  const fetchOrders = useCallback(async (tableId) => {
-    if (!tableId) return;
-    setLoadingOrders(true);
-    try {
-      const res = await cashierApi.getTableOrders(tableId);
-      setOrderData(res.data);
-    } catch (err) {
-      console.error("Lỗi tải đơn hàng:", err);
-      setOrderData(null);
-    } finally {
-      setLoadingOrders(false);
-    }
-  }, []);
+  const fetchOrders = useCallback(
+    async (tableId) => {
+      if (!tableId || !canViewOrders) return;
+      setLoadingOrders(true);
+      try {
+        const res = await cashierApi.getTableOrders(tableId);
+        setOrderData(res.data);
+      } catch (err) {
+        console.error("Lỗi tải đơn hàng:", err);
+        setOrderData(null);
+      } finally {
+        setLoadingOrders(false);
+      }
+    },
+    [canViewOrders],
+  );
 
   // Load bàn lần đầu + auto-refresh mỗi 10s
   useEffect(() => {
+    if (!canViewTables) {
+      setTables([]);
+      setLoadingTables(false);
+      return undefined;
+    }
     fetchTables();
     const interval = setInterval(fetchTables, 10000);
     return () => clearInterval(interval);
-  }, [fetchTables]);
+  }, [fetchTables, canViewTables]);
 
   // Load đơn hàng khi chọn bàn khác + auto-refresh mỗi 10s
   useEffect(() => {
+    if (!canViewOrders) {
+      setOrderData(null);
+      setLoadingOrders(false);
+      return undefined;
+    }
     if (selectedTableId) {
       fetchOrders(selectedTableId);
       const interval = setInterval(() => fetchOrders(selectedTableId), 10000);
       return () => clearInterval(interval);
-    } else {
-      setOrderData(null);
     }
-  }, [selectedTableId, fetchOrders]);
+    setOrderData(null);
+    return undefined;
+  }, [selectedTableId, fetchOrders, canViewOrders]);
 
   // ── API 1: Duyệt đơn hàng ──
   const handleApproveOrder = useCallback(
     async (orderId) => {
+      if (!canApproveOrders) {
+        showToast("error", "Bạn chưa được cấp quyền duyệt đơn.");
+        return;
+      }
       setActionLoading(true);
       try {
         await cashierApi.approveOrder(orderId);
@@ -1019,12 +1161,16 @@ export default function CashierPage() {
         setActionLoading(false);
       }
     },
-    [selectedTableId, fetchTables, fetchOrders, showToast],
+    [selectedTableId, fetchTables, fetchOrders, showToast, canApproveOrders],
   );
 
   // ── API 2: Hủy món ──
   const handleCancelItem = useCallback(
     async (itemId) => {
+      if (!canCancelItems) {
+        showToast("error", "Bạn chưa được cấp quyền hủy món.");
+        return;
+      }
       if (!window.confirm("Bạn có chắc muốn hủy món này?")) return;
       setActionLoading(true);
       try {
@@ -1038,12 +1184,16 @@ export default function CashierPage() {
         setActionLoading(false);
       }
     },
-    [selectedTableId, fetchTables, fetchOrders, showToast],
+    [selectedTableId, fetchTables, fetchOrders, showToast, canCancelItems],
   );
 
   // ── API 3: Mở modal thanh toán ──
   const handleCheckout = useCallback(
     (tableId) => {
+      if (!canCheckout) {
+        showToast("error", "Bạn chưa được cấp quyền thanh toán.");
+        return;
+      }
       const tbl = tables.find((t) => t.id === tableId);
       // Tính tổng từ orderData
       const allOrders = orderData?.orders || [];
@@ -1062,13 +1212,17 @@ export default function CashierPage() {
         total: grandTotal,
       });
     },
-    [tables, orderData],
+    [tables, orderData, canCheckout, showToast],
   );
 
   // ── API 3b: Xác nhận thanh toán với phương thức ──
   const handleConfirmPayment = useCallback(
     async (paymentMethod) => {
       if (!paymentModal) return;
+      if (!canCheckout) {
+        showToast("error", "Bạn chưa được cấp quyền thanh toán.");
+        return;
+      }
       setActionLoading(true);
       try {
         const res = await cashierApi.checkoutTable(
@@ -1090,21 +1244,29 @@ export default function CashierPage() {
         setActionLoading(false);
       }
     },
-    [paymentModal, fetchTables, showToast],
+    [paymentModal, fetchTables, showToast, canCheckout],
   );
 
   // ── API 4: Service Requests ──
   const fetchServiceRequests = useCallback(async () => {
+    if (!canReadRequests) {
+      setServiceRequests([]);
+      return;
+    }
     try {
       const res = await cashierApi.getServiceRequests();
       setServiceRequests(res.data);
     } catch {
       // ignore
     }
-  }, []);
+  }, [canReadRequests]);
 
   const handleResolveRequest = useCallback(
     async (requestId) => {
+      if (!canResolveRequests) {
+        showToast("error", "Bạn chưa được cấp quyền xử lý yêu cầu.");
+        return;
+      }
       try {
         await cashierApi.resolveServiceRequest(requestId);
         showToast("success", "Đã xử lý yêu cầu!");
@@ -1114,28 +1276,40 @@ export default function CashierPage() {
         showToast("error", msg);
       }
     },
-    [fetchServiceRequests, fetchTables, showToast],
+    [fetchServiceRequests, fetchTables, showToast, canResolveRequests],
   );
 
   // Load service requests + auto-refresh
   useEffect(() => {
+    if (!canReadRequests) {
+      setServiceRequests([]);
+      return undefined;
+    }
     fetchServiceRequests();
     const interval = setInterval(fetchServiceRequests, 10000);
     return () => clearInterval(interval);
-  }, [fetchServiceRequests]);
+  }, [fetchServiceRequests, canReadRequests]);
 
   // ── API 5: Reservations ──
   const fetchReservations = useCallback(async () => {
+    if (!canReadReservations) {
+      setReservations([]);
+      return;
+    }
     try {
       const res = await cashierApi.getReservations();
       setReservations(res.data);
     } catch {
       // ignore
     }
-  }, []);
+  }, [canReadReservations]);
 
   const handleConfirmReservation = useCallback(
     async (id, tableId) => {
+      if (!canConfirmReservation) {
+        showToast("error", "Bạn chưa được cấp quyền xác nhận đặt bàn.");
+        return;
+      }
       setActionLoading(true);
       try {
         await cashierApi.confirmReservation(id, tableId);
@@ -1148,11 +1322,15 @@ export default function CashierPage() {
         setActionLoading(false);
       }
     },
-    [fetchReservations, showToast],
+    [fetchReservations, showToast, canConfirmReservation],
   );
 
   const handleRejectReservation = useCallback(
     async (id) => {
+      if (!canRejectReservation) {
+        showToast("error", "Bạn chưa được cấp quyền từ chối đặt bàn.");
+        return;
+      }
       if (!window.confirm("Bạn có chắc muốn từ chối đặt bàn này?")) return;
       setActionLoading(true);
       try {
@@ -1166,15 +1344,19 @@ export default function CashierPage() {
         setActionLoading(false);
       }
     },
-    [fetchReservations, showToast],
+    [fetchReservations, showToast, canRejectReservation],
   );
 
   // Load reservations + auto-refresh
   useEffect(() => {
+    if (!canReadReservations) {
+      setReservations([]);
+      return undefined;
+    }
     fetchReservations();
     const interval = setInterval(fetchReservations, 15000);
     return () => clearInterval(interval);
-  }, [fetchReservations]);
+  }, [fetchReservations, canReadReservations]);
 
   // ── In tạm tính ──
   const handlePrintBill = useCallback((table, items, summary) => {
@@ -1241,6 +1423,11 @@ export default function CashierPage() {
     return c;
   }, [tables]);
 
+  const pendingReservationCount = useMemo(
+    () => reservations.filter((r) => r.status === "pending").length,
+    [reservations],
+  );
+
   const filteredTables = useMemo(() => {
     if (activeFilter === "all") return tables;
     if (activeFilter === "pending")
@@ -1251,7 +1438,10 @@ export default function CashierPage() {
   const selectedTable = tables.find((t) => t.id === selectedTableId);
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 font-body antialiased overflow-hidden">
+    <div
+      className="h-screen flex flex-col antialiased overflow-hidden"
+      style={POS_STYLE}
+    >
       {/* ── TOAST NOTIFICATION ── */}
       {toast && (
         <div
@@ -1264,24 +1454,29 @@ export default function CashierPage() {
       )}
 
       {/* ── TOP HEADER ── */}
-      <header className="h-16 bg-sea-800 text-white flex items-center justify-between px-6 shadow-md shrink-0 z-20">
+      <header className="min-h-[64px] bg-[color:var(--pos-ink)] text-white flex items-center justify-between px-6 py-3 shadow-md shrink-0 z-20 flex-wrap gap-3">
         {/* Left: Logo */}
         <div className="flex items-center gap-3">
           <div className="p-2 bg-white/10 rounded-lg">
             <UtensilsCrossed size={22} className="text-white" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight font-heading">
-            Smart Restaurant
-          </h1>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight">
+              Smart Restaurant
+            </h1>
+            <p className="text-[11px] text-white/60 uppercase tracking-[0.2em]">
+              POS
+            </p>
+          </div>
         </div>
 
         {/* Right: Clock, user, close shift */}
         <div className="flex items-center gap-5">
           {/* Reservations badge */}
           {reservations.filter((r) => r.status === "pending").length > 0 && (
-            <div className="relative flex items-center gap-2 bg-orange-500/20 px-3 py-1.5 rounded-lg">
-              <CalendarClock size={16} className="text-orange-400" />
-              <span className="text-xs font-bold text-orange-300">
+            <div className="relative flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg">
+              <CalendarClock size={16} className="text-[#ffd3a8]" />
+              <span className="text-xs font-bold text-[#ffd3a8]">
                 {reservations.filter((r) => r.status === "pending").length} đặt
                 bàn
               </span>
@@ -1290,9 +1485,9 @@ export default function CashierPage() {
 
           {/* Service requests badge */}
           {serviceRequests.length > 0 && (
-            <div className="relative flex items-center gap-2 bg-yellow-500/20 px-3 py-1.5 rounded-lg">
-              <BellRing size={16} className="text-yellow-400" />
-              <span className="text-xs font-bold text-yellow-300">
+            <div className="relative flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg">
+              <BellRing size={16} className="text-[#ffe2a3]" />
+              <span className="text-xs font-bold text-[#ffe2a3]">
                 {serviceRequests.length} yêu cầu
               </span>
             </div>
@@ -1304,23 +1499,29 @@ export default function CashierPage() {
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-bold leading-none">
-                {user?.full_name || user?.email || "Thu ngân"}
-              </p>
+              <p className="text-sm font-bold leading-none">{displayName}</p>
               <p className="text-[11px] text-white/60 leading-none mt-1">
-                Thu ngân
+                {displayRole}
               </p>
             </div>
-            <div className="size-9 rounded-full bg-sea-500 flex items-center justify-center text-white font-bold border-2 border-white/20 text-sm">
-              {(user?.full_name || user?.email || "TN")
-                .slice(0, 2)
-                .toUpperCase()}
+            <div className="size-9 rounded-full bg-[var(--pos-accent)] flex items-center justify-center text-white font-bold border-2 border-white/20 text-sm">
+              {displayName.slice(0, 2).toUpperCase()}
             </div>
           </div>
 
+          {resolvedRole !== "guest" && (
+            <button
+              onClick={() => navigate("/staff")}
+              className="ml-1 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+            >
+              <UtensilsCrossed size={16} />
+              Phục vụ
+            </button>
+          )}
+
           <button
             onClick={handleCloseShift}
-            className="ml-1 bg-coral-600 hover:bg-coral-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm"
+            className="ml-1 bg-[var(--pos-accent-2)] hover:bg-[#ec7958] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm"
           >
             <LogOut size={16} />
             Chốt ca
@@ -1329,31 +1530,53 @@ export default function CashierPage() {
       </header>
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex flex-1 overflow-hidden">
+      <main className="flex flex-1 overflow-y-auto lg:overflow-hidden flex-col lg:flex-row pos-fade">
         {/* LEFT COLUMN — Table Grid (65%) */}
-        <section className="w-[65%] flex flex-col h-full border-r border-slate-200 bg-slate-50">
-          <FilterBar
-            active={activeFilter}
-            onChange={setActiveFilter}
-            counts={counts}
-          />
+        <section className="w-full lg:w-[62%] flex flex-col h-auto lg:h-full lg:border-r border-slate-200 bg-transparent min-h-0">
+          {canViewTables ? (
+            <>
+              <FilterBar
+                active={activeFilter}
+                onChange={setActiveFilter}
+                counts={counts}
+              />
+
+              <div className="px-6 py-2 bg-white/70 border-b border-slate-100 text-xs text-[color:var(--pos-muted)] flex flex-wrap items-center gap-4">
+                <span className="font-semibold">Tổng: {counts.all}</span>
+                <span>Rảnh: {counts.empty}</span>
+                <span>Chờ duyệt: {counts.pending}</span>
+                <span>Đang phục vụ: {counts.serving}</span>
+                <span>Chờ thanh toán: {counts.payment}</span>
+              </div>
+            </>
+          ) : (
+            <div className="px-6 py-4 bg-white/70 border-b border-slate-100 text-xs text-slate-500">
+              Bạn chưa được cấp quyền xem danh sách bàn.
+            </div>
+          )}
 
           {/* Table Grid */}
-          <div className="flex-1 overflow-y-auto p-5">
-            {loadingTables ? (
+          <div className="flex-1 overflow-y-auto p-4">
+            {!canViewTables ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
+                <Info size={36} />
+                <p className="text-sm">Không có quyền xem danh sách bàn.</p>
+              </div>
+            ) : loadingTables ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
                 <Loader2 size={36} className="animate-spin" />
                 <p className="text-sm">Đang tải danh sách bàn...</p>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {filteredTables.map((table) => (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  {filteredTables.map((table, index) => (
                     <TableCard
                       key={table.id}
                       table={table}
                       isSelected={selectedTableId === table.id}
                       onClick={() => setSelectedTableId(table.id)}
+                      delay={index * 30}
                     />
                   ))}
                 </div>
@@ -1370,54 +1593,103 @@ export default function CashierPage() {
         </section>
 
         {/* RIGHT COLUMN — Order Details + Service Requests (35%) */}
-        <aside className="w-[35%] bg-white shadow-2xl z-10 flex flex-col h-full">
-          <OrderPanel
-            table={selectedTable}
-            orderData={orderData}
-            loadingOrders={loadingOrders}
-            onApproveOrder={handleApproveOrder}
-            onCancelItem={handleCancelItem}
-            onCheckout={handleCheckout}
-            onPrintBill={handlePrintBill}
-            actionLoading={actionLoading}
-          />
-
-          {/* Service Requests Panel (below order panel) */}
-          {serviceRequests.length > 0 && (
-            <div className="border-t border-slate-200 bg-slate-50 px-5 py-3 shrink-0">
-              <div className="flex items-center gap-2 mb-2">
-                <BellRing size={14} className="text-yellow-600" />
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  Yêu cầu từ khách ({serviceRequests.length})
+        <aside className="w-full lg:w-[38%] bg-[var(--pos-panel)] shadow-2xl z-10 flex flex-col h-auto lg:h-full min-h-0 pos-rise">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-200 bg-[var(--pos-soft)]">
+            <button
+              type="button"
+              onClick={() => setRightPanelTab("orders")}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                rightPanelTab === "orders"
+                  ? "bg-[var(--pos-accent)] text-white"
+                  : "bg-white text-slate-600 border border-slate-200"
+              }`}
+            >
+              Đơn hàng
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightPanelTab("reservations")}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${
+                rightPanelTab === "reservations"
+                  ? "bg-[var(--pos-accent)] text-white"
+                  : "bg-white text-slate-600 border border-slate-200"
+              }`}
+            >
+              Đặt bàn
+              {pendingReservationCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/20">
+                  {pendingReservationCount}
                 </span>
-              </div>
-              <ServiceRequestsPanel
-                requests={serviceRequests}
-                loading={loadingRequests}
-                onResolve={handleResolveRequest}
-              />
-            </div>
-          )}
+              )}
+            </button>
+          </div>
 
-          {/* Reservations Panel */}
-          {reservations.length > 0 && (
-            <div className="border-t border-slate-200 bg-slate-50 px-5 py-3 shrink-0">
-              <div className="flex items-center gap-2 mb-2">
-                <CalendarClock size={14} className="text-orange-600" />
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  Đặt bàn trước (
-                  {reservations.filter((r) => r.status === "pending").length}{" "}
-                  chờ)
-                </span>
-              </div>
-              <ReservationPanel
-                reservations={reservations}
-                tables={tables}
-                loading={loadingReservations}
-                onConfirm={handleConfirmReservation}
-                onReject={handleRejectReservation}
+          {rightPanelTab === "orders" && (
+            <>
+              <OrderPanel
+                table={selectedTable}
+                orderData={orderData}
+                loadingOrders={loadingOrders}
+                canViewOrders={canViewOrders}
+                canApproveOrders={canApproveOrders}
+                canCancelItems={canCancelItems}
+                canCheckout={canCheckout}
+                canPrintBill={canPrintBill}
+                onApproveOrder={handleApproveOrder}
+                onCancelItem={handleCancelItem}
+                onCheckout={handleCheckout}
+                onPrintBill={handlePrintBill}
                 actionLoading={actionLoading}
               />
+
+              {(serviceRequests.length > 0 || canReadRequests) && (
+                <div className="border-t border-slate-200 bg-[var(--pos-soft)] px-5 py-3 shrink-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BellRing size={14} className="text-yellow-600" />
+                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                      Yêu cầu từ khách ({serviceRequests.length})
+                    </span>
+                  </div>
+                  {canReadRequests ? (
+                    <ServiceRequestsPanel
+                      requests={serviceRequests}
+                      loading={loadingRequests}
+                      onResolve={handleResolveRequest}
+                      canResolve={canResolveRequests}
+                    />
+                  ) : (
+                    <div className="text-xs text-slate-500">
+                      Bạn chưa được cấp quyền xem yêu cầu hỗ trợ.
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {rightPanelTab === "reservations" && (
+            <div className="flex-1 overflow-y-auto">
+              {canReadReservations ? (
+                <div className="px-5 py-4">
+                  <ReservationPanel
+                    reservations={reservations}
+                    tables={tables}
+                    loading={loadingReservations}
+                    onConfirm={handleConfirmReservation}
+                    onReject={handleRejectReservation}
+                    actionLoading={actionLoading}
+                    canConfirm={canConfirmReservation}
+                    canReject={canRejectReservation}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2">
+                  <Info size={28} />
+                  <p className="text-sm">
+                    Bạn chưa được cấp quyền xem đặt bàn.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </aside>
@@ -1432,6 +1704,24 @@ export default function CashierPage() {
         onConfirm={handleConfirmPayment}
         onClose={() => setPaymentModal(null)}
       />
+
+      <style>{`
+        .pos-stagger { animation: pos-stagger 0.45s ease-out both; }
+        .pos-fade { animation: pos-fade 0.35s ease-out both; }
+        .pos-rise { animation: pos-rise 0.4s ease-out both; }
+        @keyframes pos-stagger {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pos-fade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes pos-rise {
+          from { opacity: 0; transform: translateX(10px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
     </div>
   );
 }

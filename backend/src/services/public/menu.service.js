@@ -15,12 +15,15 @@ const enrichItem = async (item) => {
         InventoryModel.checkAvailability(
           item.id,
           v.ingredient_multiplier ?? 1.0,
+          { criticalOnly: true },
         ),
       ),
     );
     is_in_stock = checks.some(Boolean);
   } else {
-    is_in_stock = await InventoryModel.checkAvailability(item.id, 1.0);
+    is_in_stock = await InventoryModel.checkAvailability(item.id, 1.0, {
+      criticalOnly: true,
+    });
   }
 
   return { ...item, variants, is_in_stock };
@@ -70,7 +73,9 @@ const getMenuItemDetail = async (id) => {
 
   // Gắn variants
   const variants = await MenuItemVariantModel.findAvailableByMenuItem(id);
-  const is_in_stock = await InventoryModel.checkAvailability(id, 1.0);
+  const is_in_stock = await InventoryModel.checkAvailability(id, 1.0, {
+    criticalOnly: true,
+  });
   return { ...item, variants, is_in_stock };
 };
 

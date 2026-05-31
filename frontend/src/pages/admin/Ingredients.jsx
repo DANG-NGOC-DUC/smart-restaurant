@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Search,
   Plus,
@@ -16,11 +16,22 @@ import {
   Filter,
   XCircle,
   Loader2,
+  ClipboardCheck,
+  PlayCircle,
+  CheckCircle2,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { useAdminIngredients } from "../../hooks/admin/ingredient";
 import { useAdminInventory } from "../../hooks/admin/inventory";
-import { getIngredientDishes } from "../../services/admin.service";
+import {
+  getIngredientDishes,
+  getOpenInventoryShift,
+  startInventoryShift,
+  closeInventoryShift,
+} from "../../services/admin.service";
 import IngredientFormModal from "../../components/admin/IngredientFormModal";
+import IngredientAiImportModal from "../../components/admin/IngredientAiImportModal";
 
 const TABS = [
   { key: "all", label: "Tất cả" },
@@ -36,6 +47,7 @@ function Ingredients() {
     createIngredient,
     updateIngredient,
     deleteIngredient,
+    refetch: refetchIngredients,
   } = useAdminIngredients();
 
   const {
@@ -44,6 +56,7 @@ function Ingredients() {
     error: invError,
     addStock,
     setStock: setStockAction,
+    refetch: refetchInventory,
   } = useAdminInventory();
 
   // Map inventory by ingredient_id for quick lookup
@@ -66,6 +79,7 @@ function Ingredients() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
   const [editingItem, setEditingItem] = useState(null);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   // Stock modal
   const [stockModalOpen, setStockModalOpen] = useState(false);
@@ -83,6 +97,16 @@ function Ingredients() {
   const [dishesTarget, setDishesTarget] = useState(null);
   const [relatedDishes, setRelatedDishes] = useState([]);
   const [dishesLoading, setDishesLoading] = useState(false);
+
+  // Inventory shift state
+  const [openShift, setOpenShift] = useState(null);
+  const [shiftLoading, setShiftLoading] = useState(false);
+  const [shiftError, setShiftError] = useState(null);
+  const [startShiftOpen, setStartShiftOpen] = useState(false);
+  const [startShiftName, setStartShiftName] = useState("");
+  const [closeShiftOpen, setCloseShiftOpen] = useState(false);
+  const [closingRows, setClosingRows] = useState([]);
+  const [shiftSubmitting, setShiftSubmitting] = useState(false);
 
   // Helper: check stock status
   const getStockStatus = (ing) => {
@@ -200,6 +224,11 @@ function Ingredients() {
     }
   };
 
+  const handleAiCompleted = async () => {
+    await refetchIngredients();
+    await refetchInventory();
+  };
+
   const handleDelete = async (id) => {
     await deleteIngredient(id);
     setDeleteConfirm(null);
@@ -207,17 +236,27 @@ function Ingredients() {
 
   // Stock handlers
   const handleOpenStock = (ing, mode) => {
+    const current = stockMap[ing.id]?.current_stock;
     setStockTarget(ing);
     setStockMode(mode);
-    setStockAmount("");
+    setStockAmount(
+      mode === "set" && current !== undefined && current !== null
+        ? String(current)
+        : "",
+    );
     setStockError(null);
     setStockModalOpen(true);
   };
 
   const handleStockSubmit = async () => {
-    const val = Number(stockAmount);
+    const raw = stockAmount.trim();
+    if (raw === "") {
+      setStockError("Vui lòng nhập số lượng.");
+      return;
+    }
+    const val = Number(raw);
     if (
-      isNaN(val) ||
+      Number.isNaN(val) ||
       (stockMode === "add" && val <= 0) ||
       (stockMode === "set" && val < 0)
     ) {
@@ -259,6 +298,101 @@ function Ingredients() {
     }
   };
 
+  const fetchOpenShift = useCallback(async () => {
+    setShiftLoading(true);
+    setShiftError(null);
+    try {
+      const res = await getOpenInventoryShift();
+      setOpenShift(res.data);
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        setOpenShift(null);
+      } else {
+        setShiftError(err?.response?.data?.error || err.message);
+      }
+    } finally {
+      setShiftLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOpenShift();
+  }, [fetchOpenShift]);
+
+  const handleStartShift = async () => {
+    setShiftSubmitting(true);
+    setShiftError(null);
+    try {
+      const res = await startInventoryShift({
+        name: startShiftName.trim() || null,
+      });
+      setOpenShift(res.data);
+      setStartShiftOpen(false);
+      setStartShiftName("");
+    } catch (err) {
+      setShiftError(err?.response?.data?.error || err.message);
+    } finally {
+      setShiftSubmitting(false);
+    }
+  };
+
+  const handleOpenCloseShift = () => {
+    if (!openShift) return;
+    const rows = (openShift.items || []).map((item) => {
+      const current = stockMap[item.ingredient_id]
+        ? parseFloat(stockMap[item.ingredient_id].current_stock)
+        : parseFloat(item.opening_stock);
+      return {
+        ingredient_id: item.ingredient_id,
+        ingredient_name: item.ingredient_name,
+        unit: item.unit,
+        opening_stock: parseFloat(item.opening_stock),
+        closing_stock: Number.isNaN(current) ? 0 : current,
+      };
+    });
+    setClosingRows(rows);
+    setCloseShiftOpen(true);
+  };
+
+  const handleClosingChange = (ingredientId, value) => {
+    setClosingRows((prev) =>
+      prev.map((row) =>
+        row.ingredient_id === ingredientId
+          ? { ...row, closing_stock: value }
+          : row,
+      ),
+    );
+  };
+
+  const handleCloseShift = async () => {
+    if (!openShift) return;
+    setShiftSubmitting(true);
+    setShiftError(null);
+    try {
+      for (const row of closingRows) {
+        const val = Number(row.closing_stock);
+        if (Number.isNaN(val) || val < 0) {
+          setShiftError("Tồn cuối ca phải là số >= 0 cho tất cả nguyên liệu.");
+          setShiftSubmitting(false);
+          return;
+        }
+      }
+      const payload = closingRows.map((row) => ({
+        ingredient_id: row.ingredient_id,
+        closing_stock: Number(row.closing_stock),
+      }));
+      await closeInventoryShift(openShift.id, payload);
+      setOpenShift(null);
+      setCloseShiftOpen(false);
+      setClosingRows([]);
+      await refetchInventory();
+    } catch (err) {
+      setShiftError(err?.response?.data?.error || err.message);
+    } finally {
+      setShiftSubmitting(false);
+    }
+  };
+
   const hasActiveFilters = searchQuery || unitFilter || activeTab !== "all";
 
   const clearFilters = () => {
@@ -279,13 +413,22 @@ function Ingredients() {
             Quản lý nguyên liệu và theo dõi tồn kho
           </p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-sea-500 text-white rounded-lg hover:bg-sea-600 transition-colors font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm nguyên liệu
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setAiModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-coral-500 text-white rounded-lg hover:bg-coral-600 transition-colors font-medium"
+          >
+            <Sparkles className="w-5 h-5" />
+            Nhập nhanh AI
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-sea-500 text-white rounded-lg hover:bg-sea-600 transition-colors font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm nguyên liệu
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -327,6 +470,91 @@ function Ingredients() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Inventory shift */}
+      <div className="bg-white rounded-xl p-5 shadow-card border border-sea-100">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-sea-50 rounded-lg flex items-center justify-center">
+              <ClipboardCheck className="w-5 h-5 text-sea-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-sea-800">
+                Kiểm kê cuối ca
+              </h2>
+              <p className="text-sm text-sea-500">
+                Ghi nhận tồn đầu ca và nhập tồn thực tế cuối ca.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchOpenShift}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-sea-600 border border-sea-200 rounded-lg hover:bg-sea-50"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Làm mới
+            </button>
+            {openShift ? (
+              <button
+                onClick={handleOpenCloseShift}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-coral-500 text-white rounded-lg hover:bg-coral-600"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Nhập tồn cuối ca
+              </button>
+            ) : (
+              <button
+                onClick={() => setStartShiftOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sea-500 text-white rounded-lg hover:bg-sea-600"
+              >
+                <PlayCircle className="w-4 h-4" />
+                Bắt đầu ca
+              </button>
+            )}
+          </div>
+        </div>
+
+        {shiftError && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {shiftError}
+          </div>
+        )}
+
+        {shiftLoading ? (
+          <div className="flex items-center gap-2 text-sea-500 text-sm mt-4">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Đang tải ca kiểm kê...
+          </div>
+        ) : openShift ? (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-sea-50 rounded-lg p-4">
+              <p className="text-xs text-sea-500">Tên ca</p>
+              <p className="text-sm font-semibold text-sea-800">
+                {openShift.name || "Ca kiểm kê"}
+              </p>
+            </div>
+            <div className="bg-sea-50 rounded-lg p-4">
+              <p className="text-xs text-sea-500">Bắt đầu lúc</p>
+              <p className="text-sm font-semibold text-sea-800">
+                {openShift.opened_at
+                  ? new Date(openShift.opened_at).toLocaleString("vi-VN")
+                  : "—"}
+              </p>
+            </div>
+            <div className="bg-sea-50 rounded-lg p-4">
+              <p className="text-xs text-sea-500">Số nguyên liệu</p>
+              <p className="text-sm font-semibold text-sea-800">
+                {(openShift.items || []).length} mặt hàng
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 text-sm text-sea-500">
+            Chưa có ca kiểm kê nào đang mở.
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -633,12 +861,17 @@ function Ingredients() {
                 onChange={(e) => setStockAmount(e.target.value)}
                 placeholder={
                   stockMode === "add"
-                    ? "Nhập số lượng thêm vào"
-                    : "Nhập số lượng mới"
+                    ? "Nhập số lượng cộng thêm"
+                    : "Nhập tổng tồn mới"
                 }
                 className="w-full px-3 py-2.5 border border-sea-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sea-500 focus:border-transparent"
                 autoFocus
               />
+              {stockMode === "set" && (
+                <p className="mt-2 text-xs text-sea-500">
+                  Đây là số lượng tồn mới, không phải số cộng thêm.
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -721,6 +954,130 @@ function Ingredients() {
         </div>
       )}
 
+      {/* Start shift modal */}
+      {startShiftOpen && (
+        <div className="fixed inset-0 bg-sea-900/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-bold text-sea-800">
+              Bắt đầu ca kiểm kê
+            </h3>
+            <p className="text-sm text-sea-500">
+              Hệ thống sẽ chốt tồn đầu ca cho tất cả nguyên liệu hiện có.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-sea-700 mb-1">
+                Tên ca (tuỳ chọn)
+              </label>
+              <input
+                type="text"
+                value={startShiftName}
+                onChange={(e) => setStartShiftName(e.target.value)}
+                placeholder="Ví dụ: Ca sáng 09/05"
+                className="w-full px-3 py-2.5 border border-sea-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sea-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStartShiftOpen(false)}
+                className="flex-1 py-2.5 bg-sea-100 text-sea-700 rounded-lg font-medium hover:bg-sea-200 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleStartShift}
+                disabled={shiftSubmitting}
+                className="flex-1 py-2.5 bg-sea-500 text-white rounded-lg font-medium hover:bg-sea-600 transition-colors disabled:opacity-50"
+              >
+                {shiftSubmitting ? "Đang bắt đầu..." : "Bắt đầu ca"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Close shift modal */}
+      {closeShiftOpen && openShift && (
+        <div className="fixed inset-0 bg-sea-900/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+            <div className="p-6 border-b border-sea-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-sea-800">
+                  Nhập tồn cuối ca
+                </h3>
+                <p className="text-sm text-sea-500 mt-0.5">
+                  {openShift.name || "Ca kiểm kê"}
+                </p>
+              </div>
+              <button
+                onClick={() => setCloseShiftOpen(false)}
+                className="p-2 hover:bg-sea-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-sea-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              {shiftError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  {shiftError}
+                </div>
+              )}
+              <div className="grid grid-cols-12 gap-2 text-xs font-medium text-sea-500 uppercase">
+                <div className="col-span-5">Nguyên liệu</div>
+                <div className="col-span-3">Tồn đầu ca</div>
+                <div className="col-span-4">Tồn cuối ca</div>
+              </div>
+              <div className="space-y-2">
+                {closingRows.map((row) => (
+                  <div
+                    key={row.ingredient_id}
+                    className="grid grid-cols-12 gap-2 items-center"
+                  >
+                    <div className="col-span-5">
+                      <p className="text-sm font-medium text-sea-700">
+                        {row.ingredient_name}
+                      </p>
+                      <p className="text-xs text-sea-400">{row.unit}</p>
+                    </div>
+                    <div className="col-span-3 text-sm text-sea-600">
+                      {row.opening_stock} {row.unit}
+                    </div>
+                    <div className="col-span-4">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        value={row.closing_stock}
+                        onChange={(e) =>
+                          handleClosingChange(row.ingredient_id, e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-sea-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sea-500"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-sea-100 flex gap-3">
+              <button
+                onClick={() => setCloseShiftOpen(false)}
+                className="flex-1 py-2.5 bg-sea-100 text-sea-700 rounded-lg font-medium hover:bg-sea-200 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleCloseShift}
+                disabled={shiftSubmitting}
+                className="flex-1 py-2.5 bg-coral-500 text-white rounded-lg font-medium hover:bg-coral-600 transition-colors disabled:opacity-50"
+              >
+                {shiftSubmitting ? "Đang chốt ca..." : "Chốt ca"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Ingredient form modal */}
       <IngredientFormModal
         open={modalOpen}
@@ -728,6 +1085,13 @@ function Ingredients() {
         ingredient={editingItem}
         onSubmit={handleSubmit}
         mode={modalMode}
+      />
+
+      <IngredientAiImportModal
+        open={aiModalOpen}
+        onOpenChange={setAiModalOpen}
+        existingIngredients={ingredients}
+        onCompleted={handleAiCompleted}
       />
     </div>
   );

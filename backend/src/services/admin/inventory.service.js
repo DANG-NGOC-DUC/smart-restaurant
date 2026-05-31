@@ -1,5 +1,8 @@
 import { InventoryModel } from "../../models/inventory.model.js";
 import { IngredientModel } from "../../models/ingredient.model.js";
+import {
+  refreshAvailabilityByIngredients,
+} from "../shared/menuAvailability.service.js";
 
 const getAllInventory = async () => {
   return InventoryModel.findAll();
@@ -26,13 +29,17 @@ const addStock = async (ingredientId, amount) => {
   // Nếu chưa có record inventory → tạo mới
   const existing = await InventoryModel.findByIngredientId(ingredientId);
   if (!existing) {
-    return InventoryModel.create({
+    const created = await InventoryModel.create({
       ingredient_id: ingredientId,
       current_stock: amount,
     });
+    await refreshAvailabilityByIngredients([ingredientId]);
+    return created;
   }
 
-  return InventoryModel.addStock(ingredientId, amount);
+  const updated = await InventoryModel.addStock(ingredientId, amount);
+  await refreshAvailabilityByIngredients([ingredientId]);
+  return updated;
 };
 
 // Đặt lại số lượng tồn kho (kiểm kê)
@@ -49,13 +56,17 @@ const setStock = async (ingredientId, newStock) => {
   // Nếu chưa có record inventory → tạo mới
   const existing = await InventoryModel.findByIngredientId(ingredientId);
   if (!existing) {
-    return InventoryModel.create({
+    const created = await InventoryModel.create({
       ingredient_id: ingredientId,
       current_stock: newStock,
     });
+    await refreshAvailabilityByIngredients([ingredientId]);
+    return created;
   }
 
-  return InventoryModel.updateStock(ingredientId, newStock);
+  const updated = await InventoryModel.updateStock(ingredientId, newStock);
+  await refreshAvailabilityByIngredients([ingredientId]);
+  return updated;
 };
 
 export const inventoryService = {

@@ -1,4 +1,6 @@
 import { Routes, Route } from "react-router-dom";
+import ProtectedRoute from "./ProtectedRoute";
+
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import AuthLayout from "../layouts/AuthLayout";
@@ -53,7 +55,14 @@ export default function AppRoutes() {
       <Route path="/auth/callback" element={<GoogleCallback />} />
 
       {/* Admin routes */}
-      <Route path="/admin" element={<AdminLayout />}>
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowRoles={["admin"]}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<DashboardPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="menu" element={<MenuPage />} />
@@ -67,7 +76,14 @@ export default function AppRoutes() {
       </Route>
 
       {/* Staff routes */}
-      <Route path="/staff" element={<StaffLayout />}>
+      <Route
+        path="/staff"
+        element={
+          <ProtectedRoute allowRoles={["staff", "chef", "admin"]}>
+            <StaffLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<StaffTableMap />} />
         <Route path="pending" element={<StaffPendingOrders />} />
         <Route path="serve" element={<StaffServeFood />} />
@@ -86,7 +102,17 @@ export default function AppRoutes() {
       </Route>
 
       {/* Cashier POS - standalone full-screen */}
-      <Route path="/cashier" element={<CashierPage />} />
+      <Route
+        path="/cashier"
+        element={
+          <ProtectedRoute
+            allowRoles={["staff", "chef", "admin"]}
+            requirePermissionPrefix="cashier."
+          >
+            <CashierPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Public routes - customer facing */}
       <Route path="/table/:token" element={<PublicLayout />}>

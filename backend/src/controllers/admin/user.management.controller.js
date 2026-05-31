@@ -69,6 +69,7 @@ const updateUser = async (req, res, next) => {
       "status",
       "employee_code",
       "joined_at",
+      "permissions",
     ];
     const updateData = {};
     for (const key of allowedFields) {

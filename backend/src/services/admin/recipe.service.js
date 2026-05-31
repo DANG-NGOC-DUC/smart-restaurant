@@ -1,6 +1,9 @@
 import { MenuItemIngredientModel } from "../../models/menuItemIngredient.model.js";
 import { MenuItemModel } from "../../models/menuItem.model.js";
 import { IngredientModel } from "../../models/ingredient.model.js";
+import {
+  refreshAvailabilityForMenuItems,
+} from "../shared/menuAvailability.service.js";
 
 // Lấy công thức (danh sách nguyên liệu) của 1 món
 const getRecipe = async (menuItemId) => {
@@ -26,7 +29,7 @@ const setRecipe = async (menuItemId, ingredients) => {
   }
 
   // Validate từng nguyên liệu
-  for (const ing of ingredients) {
+  const normalized = ingredients.map((ing) => {
     if (!ing.ingredient_id || !ing.quantity_needed) {
       throw new Error(
         "Mỗi nguyên liệu cần có ingredient_id và quantity_needed.",
@@ -35,6 +38,16 @@ const setRecipe = async (menuItemId, ingredients) => {
     if (ing.quantity_needed <= 0) {
       throw new Error("quantity_needed phải lớn hơn 0.");
     }
+    if (ing.is_critical !== undefined && typeof ing.is_critical !== "boolean") {
+      throw new Error("is_critical phải là true/false.");
+    }
+    return {
+      ...ing,
+      is_critical: ing.is_critical === undefined ? true : ing.is_critical,
+    };
+  });
+
+  for (const ing of normalized) {
     const exists = await IngredientModel.findById(ing.ingredient_id);
     if (!exists) {
       throw new Error(`Nguyên liệu ID ${ing.ingredient_id} không tồn tại.`);
@@ -42,7 +55,7 @@ const setRecipe = async (menuItemId, ingredients) => {
   }
 
   // Kiểm tra trùng ingredient_id
-  const ids = ingredients.map((i) => i.ingredient_id);
+  const ids = normalized.map((i) => i.ingredient_id);
   if (new Set(ids).size !== ids.length) {
     throw new Error("Không được trùng nguyên liệu trong công thức.");
   }
@@ -51,20 +64,28 @@ const setRecipe = async (menuItemId, ingredients) => {
   await MenuItemIngredientModel.removeByMenuItemId(menuItemId);
   const created = await MenuItemIngredientModel.bulkCreate(
     menuItemId,
-    ingredients,
+    normalized,
   );
+  await refreshAvailabilityForMenuItems([menuItemId]);
   return created;
 };
 
 // Cập nhật lượng nguyên liệu cho 1 dòng trong công thức
-const updateRecipeItem = async (menuItemId, ingredientId, quantityNeeded) => {
+const updateRecipeItem = async (menuItemId, ingredientId, data) => {
   const menuItem = await MenuItemModel.findById(menuItemId);
   if (!menuItem) {
     throw new Error("Món ăn không tồn tại.");
   }
 
-  if (!quantityNeeded || quantityNeeded <= 0) {
+  const { quantity_needed, is_critical } = data || {};
+  if (quantity_needed === undefined && is_critical === undefined) {
+    throw new Error("Cần quantity_needed hoặc is_critical.");
+  }
+  if (quantity_needed !== undefined && quantity_needed <= 0) {
     throw new Error("quantity_needed phải lớn hơn 0.");
+  }
+  if (is_critical !== undefined && typeof is_critical !== "boolean") {
+    throw new Error("is_critical phải là true/false.");
   }
 
   // Tìm dòng công thức theo menu_item_id + ingredient_id
@@ -78,9 +99,20 @@ const updateRecipeItem = async (menuItemId, ingredientId, quantityNeeded) => {
     throw new Error("Nguyên liệu này không có trong công thức của món.");
   }
 
-  return MenuItemIngredientModel.update(recipeItem.id, {
-    quantity_needed: quantityNeeded,
-  });
+  const updateData = {};
+  if (quantity_needed !== undefined) {
+    updateData.quantity_needed = quantity_needed;
+  }
+  if (is_critical !== undefined) {
+    updateData.is_critical = is_critical;
+  }
+
+  const updated = await MenuItemIngredientModel.update(
+    recipeItem.id,
+    updateData,
+  );
+  await refreshAvailabilityForMenuItems([menuItemId]);
+  return updated;
 };
 
 // Xóa 1 nguyên liệu khỏi công thức
@@ -101,6 +133,7 @@ const removeRecipeItem = async (menuItemId, ingredientId) => {
   }
 
   const deleted = await MenuItemIngredientModel.remove(recipeItem.id);
+  await refreshAvailabilityForMenuItems([menuItemId]);
   return deleted > 0;
 };
 

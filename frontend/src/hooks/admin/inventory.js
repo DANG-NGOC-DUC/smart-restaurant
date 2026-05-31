@@ -39,6 +39,11 @@ export function useAdminInventory() {
     fetchLowStock();
   }, [fetchInventory, fetchLowStock]);
 
+  const refetchAll = useCallback(async () => {
+    await fetchInventory();
+    await fetchLowStock();
+  }, [fetchInventory, fetchLowStock]);
+
   const handleAddStock = async (ingredientId, amount) => {
     setError(null);
     try {
@@ -72,7 +77,7 @@ export function useAdminInventory() {
     lowStock,
     loading,
     error,
-    refetch: fetchInventory,
+    refetch: refetchAll,
     addStock: handleAddStock,
     setStock: handleSetStock,
   };

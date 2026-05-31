@@ -165,10 +165,10 @@ export const setRecipe = (menuItemId, ingredients) => {
 };
 
 // Cập nhật định lượng (PUT /api/admin/menu-items/:menuItemId/ingredients/:ingredientId)
-export const updateRecipeItem = (menuItemId, ingredientId, quantityNeeded) => {
+export const updateRecipeItem = (menuItemId, ingredientId, data) => {
   return api.put(
     `/admin/menu-items/${menuItemId}/ingredients/${ingredientId}`,
-    { quantity_needed: quantityNeeded },
+    data,
   );
 };
 
@@ -233,6 +233,16 @@ export const getIngredientDishes = (id) => {
   return api.get(`/admin/ingredients/${id}/dishes`);
 };
 
+// Phân tích nguyên liệu từ văn bản (POST /api/admin/ingredients/ai-parse)
+export const parseIngredientsAi = (text) => {
+  return api.post("/admin/ingredients/ai-parse", { text });
+};
+
+// Nhập liệu hàng loạt (POST /api/admin/ingredients/bulk-upsert)
+export const bulkUpsertIngredients = (items) => {
+  return api.post("/admin/ingredients/bulk-upsert", { items });
+};
+
 // ==================== INVENTORY ====================
 
 // Lấy tất cả tồn kho (GET /api/admin/inventory)
@@ -253,6 +263,23 @@ export const addStock = (ingredientId, amount) => {
 // Đặt lại tồn kho (POST /api/admin/inventory/:ingredientId/set)
 export const setStock = (ingredientId, stock) => {
   return api.post(`/admin/inventory/${ingredientId}/set`, { stock });
+};
+
+// ==================== INVENTORY SHIFTS ====================
+
+// Lấy ca kiểm kê đang mở (GET /api/admin/inventory-shifts/open)
+export const getOpenInventoryShift = () => {
+  return api.get("/admin/inventory-shifts/open");
+};
+
+// Bắt đầu ca kiểm kê (POST /api/admin/inventory-shifts)
+export const startInventoryShift = (data) => {
+  return api.post("/admin/inventory-shifts", data);
+};
+
+// Đóng ca kiểm kê (POST /api/admin/inventory-shifts/:shiftId/close)
+export const closeInventoryShift = (shiftId, items) => {
+  return api.post(`/admin/inventory-shifts/${shiftId}/close`, { items });
 };
 
 // ==================== ORDERS ====================
@@ -343,4 +370,9 @@ export const getPaymentMethods = (range = "7days") => {
 // Lấy giờ cao điểm (GET /api/admin/reports/peak-hours?range=7days)
 export const getPeakHours = (range = "7days") => {
   return api.get("/admin/reports/peak-hours", { params: { range } });
+};
+
+// Lấy tiêu hao nguyên liệu (GET /api/admin/reports/inventory-consumption?range=7days)
+export const getInventoryConsumption = (range = "7days") => {
+  return api.get("/admin/reports/inventory-consumption", { params: { range } });
 };

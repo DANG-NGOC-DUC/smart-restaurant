@@ -90,6 +90,7 @@ const updateMenuItem = async (id, data, file) => {
   if (data.is_available !== undefined) {
     updateData.is_available =
       data.is_available === "true" || data.is_available === true;
+    updateData.auto_locked = false;
   }
 
   // Upload ảnh mới nếu có

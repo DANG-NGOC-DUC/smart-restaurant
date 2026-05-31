@@ -3,9 +3,21 @@ import { X } from "lucide-react";
 
 const ROLES_OPTIONS = [
   { label: "Nhân viên", value: "staff" },
-  { label: "Thu ngân", value: "cashier" },
   { label: "Bếp", value: "chef" },
   { label: "Quản lý", value: "admin" },
+];
+
+const CASHIER_PERMISSIONS = [
+  { key: "cashier.tables.read", label: "Xem danh sách bàn" },
+  { key: "cashier.orders.read", label: "Xem đơn theo bàn" },
+  { key: "cashier.orders.approve", label: "Duyệt đơn QR" },
+  { key: "cashier.order_items.cancel", label: "Hủy món ngoại lệ" },
+  { key: "cashier.checkout", label: "Thanh toán & đóng phiên" },
+  { key: "cashier.reservations.read", label: "Xem đặt bàn" },
+  { key: "cashier.reservations.confirm", label: "Xác nhận đặt bàn" },
+  { key: "cashier.reservations.reject", label: "Từ chối đặt bàn" },
+  { key: "cashier.service_requests.read", label: "Xem yêu cầu hỗ trợ" },
+  { key: "cashier.service_requests.resolve", label: "Xử lý yêu cầu hỗ trợ" },
 ];
 
 const STATUS_OPTIONS = [
@@ -29,6 +41,7 @@ export function UserDetailsModal({
     status: "active",
     employee_code: "",
     joined_at: "",
+    permissions: [],
     password: "", // <-- Thêm
   });
 
@@ -44,6 +57,7 @@ export function UserDetailsModal({
           status: "active",
           employee_code: "",
           joined_at: "",
+          permissions: [],
           password: "", // <-- Thêm
         });
       } else if (user) {
@@ -56,6 +70,7 @@ export function UserDetailsModal({
           status: user.status || "active",
           employee_code: user.employee_code || "",
           joined_at: user.joined_at ? user.joined_at.split("T")[0] : "",
+          permissions: Array.isArray(user.permissions) ? user.permissions : [],
         });
       }
     }
@@ -66,6 +81,26 @@ export function UserDetailsModal({
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  const togglePermission = (permissionKey) => {
+    setFormData((prev) => {
+      const current = Array.isArray(prev.permissions) ? prev.permissions : [];
+      const next = new Set(current);
+      if (next.has(permissionKey)) {
+        next.delete(permissionKey);
+      } else {
+        next.add(permissionKey);
+      }
+      return { ...prev, permissions: Array.from(next) };
+    });
+  };
+
+  const cashierKeys = CASHIER_PERMISSIONS.map((p) => p.key);
+  const hasAllCashier = cashierKeys.every((k) =>
+    (formData.permissions || []).includes(k),
+  );
+  const canAssignCashier = formData.role === "staff";
+  const isAdminRole = formData.role === "admin";
 
   const handleUpdate = (e) => {
     e.preventDefault();
@@ -186,6 +221,75 @@ export function UserDetailsModal({
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Phân quyền bổ sung */}
+          <div className="pt-2 border-t border-sea-100 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-sea-800">
+                  Phân quyền bổ sung
+                </p>
+                <p className="text-xs text-sea-500">
+                  Áp dụng cho nhân viên, admin có toàn quyền
+                </p>
+              </div>
+              {canAssignCashier && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      permissions: hasAllCashier ? [] : cashierKeys,
+                    }))
+                  }
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-sea-200 text-sea-700 hover:bg-sea-50"
+                >
+                  {hasAllCashier ? "Bỏ chọn" : "Chọn tất cả"}
+                </button>
+              )}
+            </div>
+
+            {isAdminRole && (
+              <div className="px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-xs border border-emerald-100">
+                Tài khoản quản lý có toàn quyền, không cần cấu hình quyền bổ
+                sung.
+              </div>
+            )}
+
+            {!isAdminRole && !canAssignCashier && (
+              <div className="px-3 py-2 rounded-lg bg-sea-50 text-sea-600 text-xs border border-sea-100">
+                Quyền thu ngân chỉ áp dụng cho vai trò nhân viên.
+              </div>
+            )}
+
+            {canAssignCashier && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {CASHIER_PERMISSIONS.map((permission) => {
+                  const checked = (formData.permissions || []).includes(
+                    permission.key,
+                  );
+                  return (
+                    <label
+                      key={permission.key}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs cursor-pointer transition-all ${
+                        checked
+                          ? "border-sea-400 bg-sea-50 text-sea-800"
+                          : "border-sea-100 bg-white text-sea-600 hover:bg-sea-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => togglePermission(permission.key)}
+                        className="accent-sea-500"
+                      />
+                      <span className="font-medium">{permission.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Thông tin nhân viên */}

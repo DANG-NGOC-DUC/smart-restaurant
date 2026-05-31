@@ -25,6 +25,7 @@ export function RecipeModal({
           quantity_needed: r.quantity_needed,
           ingredient_name: r.ingredient_name,
           unit: r.unit,
+          is_critical: r.is_critical !== undefined ? r.is_critical : true,
         })),
       );
       setError(null);
@@ -48,6 +49,7 @@ export function RecipeModal({
         quantity_needed: "",
         ingredient_name: "",
         unit: "",
+        is_critical: true,
       },
     ]);
   };
@@ -104,6 +106,7 @@ export function RecipeModal({
         validRows.map((r) => ({
           ingredient_id: r.ingredient_id,
           quantity_needed: Number(r.quantity_needed),
+          is_critical: r.is_critical !== false,
         })),
       );
       onOpenChange(false);
@@ -158,10 +161,11 @@ export function RecipeModal({
             <>
               {/* Table header */}
               <div className="grid grid-cols-12 gap-2 text-xs font-medium text-sea-500 uppercase px-1">
-                <div className="col-span-5">Nguyên liệu</div>
+                <div className="col-span-4">Nguyên liệu</div>
                 <div className="col-span-3">Định lượng</div>
                 <div className="col-span-2">Đơn vị</div>
-                <div className="col-span-2"></div>
+                <div className="col-span-2">Quan trọng</div>
+                <div className="col-span-1"></div>
               </div>
 
               {/* Rows */}
@@ -171,7 +175,7 @@ export function RecipeModal({
                     key={idx}
                     className="grid grid-cols-12 gap-2 items-center"
                   >
-                    <div className="col-span-5">
+                    <div className="col-span-4">
                       {row.ingredient_name &&
                       usedIds.filter((id) => id === row.ingredient_id).length <=
                         1 ? (
@@ -244,7 +248,24 @@ export function RecipeModal({
                         {row.unit || "—"}
                       </span>
                     </div>
-                    <div className="col-span-2 flex justify-end">
+                    <div className="col-span-2">
+                      <label className="inline-flex items-center gap-2 text-xs text-sea-600">
+                        <input
+                          type="checkbox"
+                          checked={row.is_critical !== false}
+                          onChange={(e) =>
+                            handleRowChange(
+                              idx,
+                              "is_critical",
+                              e.target.checked,
+                            )
+                          }
+                          className="accent-sea-500"
+                        />
+                        {row.is_critical !== false ? "Chính" : "Phụ"}
+                      </label>
+                    </div>
+                    <div className="col-span-1 flex justify-end">
                       <button
                         onClick={() => handleRemoveRow(idx)}
                         className="p-1.5 hover:bg-crimson-50 rounded transition-colors"
