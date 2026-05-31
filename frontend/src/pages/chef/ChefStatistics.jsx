@@ -2,6 +2,8 @@ import TopDishCard from "../../components/chef/TopDishCard";
 import TableStatisticsCard from "../../components/chef/TableStatisticsCard";
 import { useEffect, useState } from "react";
 
+const DELIVERY_STORAGE_KEY = "chefLatestDelivered";
+
 function ChefStatistics() {
   const topDishes = [
     {
@@ -88,7 +90,7 @@ function ChefStatistics() {
 
   const loadLatestDelivered = () => {
     try {
-      const raw = window.localStorage.getItem("chefLatestDelivered");
+      const raw = window.localStorage.getItem(DELIVERY_STORAGE_KEY);
       if (!raw) return null;
 
       const entry = JSON.parse(raw);
@@ -112,7 +114,7 @@ function ChefStatistics() {
     load();
 
     const onStorage = (e) => {
-      if (e?.key && e.key !== "latestDelivered") return;
+      if (e?.key && e.key !== DELIVERY_STORAGE_KEY) return;
       load();
     };
 

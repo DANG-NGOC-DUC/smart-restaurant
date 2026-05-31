@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Loader2,
   RefreshCw,
@@ -19,13 +19,34 @@ const CANCEL_REASONS = [
   "Chờ quá lâu",
 ];
 
+const DELIVERY_STORAGE_KEY = "chefLatestDelivered";
+
+function readLatestDelivered() {
+  try {
+    const raw = window.localStorage.getItem(DELIVERY_STORAGE_KEY);
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    return entry && typeof entry === "object" ? entry : null;
+  } catch {
+    return null;
+  }
+}
+
 function ServeFood() {
-  const { items, loading, error, fetchItems, markServed, cancelItem } =
-    usePendingItems();
+  const {
+    items,
+    loading,
+    error,
+    fetchItems,
+    markServed,
+    confirmReceive,
+    cancelItem,
+  } = usePendingItems();
   const [cancelTarget, setCancelTarget] = useState(null); // { id, name }
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [deliveryToast, setDeliveryToast] = useState(null);
 
   const handleServe = async (itemId) => {
     try {
@@ -62,6 +83,49 @@ function ServeFood() {
       setCancelling(false);
     }
   };
+
+  useEffect(() => {
+    const applyEntry = (entry) => {
+      if (!entry) return;
+      setDeliveryToast({
+        id: `${entry.orderId || entry.table || "delivery"}-${entry.time || Date.now()}`,
+        message: `Bếp vừa giao ${entry.table} · ${entry.quantity} phần`,
+      });
+    };
+
+    const syncFromStorage = () => {
+      applyEntry(readLatestDelivered());
+    };
+
+    syncFromStorage();
+
+    const onStorage = (event) => {
+      if (event?.key && event.key !== DELIVERY_STORAGE_KEY) return;
+      syncFromStorage();
+    };
+
+    const onCustom = (event) => {
+      applyEntry(event?.detail);
+    };
+
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("latestDeliveredUpdated", onCustom);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("latestDeliveredUpdated", onCustom);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!deliveryToast) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setDeliveryToast(null);
+    }, 4000);
+
+    return () => window.clearTimeout(timer);
+  }, [deliveryToast]);
 
   // Loading
   if (loading && items.length === 0) {
@@ -117,6 +181,22 @@ function ServeFood() {
 
   return (
     <div className="p-4 space-y-4">
+      {deliveryToast && (
+        <div className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl border border-emerald-200 bg-white px-4 py-3 shadow-lg shadow-slate-200/70">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold shrink-0">
+              ✓
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-emerald-700">
+                Thông báo từ bếp
+              </p>
+              <p className="text-xs text-slate-600">{deliveryToast.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header summary */}
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-sm font-semibold text-slate-700">
@@ -181,13 +261,23 @@ function ServeFood() {
                     <X className="w-3.5 h-3.5" />
                     <span>Huỷ</span>
                   </button>
-                  <button
-                    onClick={() => handleServe(item.id)}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-sea-600 text-white text-xs font-semibold rounded-lg hover:bg-sea-700 active:scale-95 transition-all"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Đã lên</span>
-                  </button>
+                  {item.status === "serving" ? (
+                    <button
+                      onClick={() => confirmReceive(item.id)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-sea-600 text-white text-xs font-semibold rounded-lg hover:bg-sea-700 active:scale-95 transition-all"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Xác nhận nhận món</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleServe(item.id)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-sea-600 text-white text-xs font-semibold rounded-lg hover:bg-sea-700 active:scale-95 transition-all"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Đã lên</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

@@ -38,6 +38,16 @@ export const getPendingItems = () => {
   return api.get("/staff/pending-items");
 };
 
+// Lấy danh sách món đang chờ phục vụ (GET /api/staff/serving-items)
+export const getServingItems = () => {
+  return api.get("/staff/serving-items");
+};
+
+// Lấy dữ liệu bảng bếp (GET /api/staff/kitchen-board) 
+export const getKitchenBoard = () => {
+  return api.get("/staff/kitchen-board");
+};
+
 // Alias cũ để tránh gãy các màn hình đã dùng tên cũ
 export const getKitchenItems = getPendingItems;
 export const getReadyItems = getPendingItems;
@@ -74,12 +84,37 @@ export const markItemReady = (itemId) => {
   return api.patch(`/staff/order-items/${itemId}/cooked`);
 };
 
+// Bếp chuyển món sang chờ phục vụ (PATCH /api/staff/order-items/:itemId/serving)
+export const markItemServing = (itemId) => {
+  return api.patch(`/staff/order-items/${itemId}/serving`);
+};
+
 // Alias cũ
 export const markItemCooked = markItemReady;
 
+// Bếp hoàn tác món đang nấu về chờ nấu (PATCH /api/staff/order-items/:itemId/revert-pending)
+export const revertItemToPreparing = (itemId) => {
+  return api.patch(`/staff/order-items/${itemId}/revert-pending`);
+};
+
+// Bếp hoàn tác món đã xong về đang nấu (PATCH /api/staff/order-items/:itemId/revert-cooking)
+export const revertItemToCooking = (itemId) => {
+  return api.patch(`/staff/order-items/${itemId}/revert-cooking`);
+};
+
 // Đánh dấu đã lên món (PATCH /api/staff/order-items/:itemId/serve)
 export const markItemServed = (itemId) => {
-  return api.patch(`/staff/order-items/${itemId}/serve`);
+  return api.patch(`/staff/order-items/${itemId}/serve`); 
+};
+
+// Phục vụ xác nhận đã nhận từ bếp (PATCH /api/staff/order-items/:itemId/confirm-receive)
+export const confirmReceive = (itemId) => {
+  return api.patch(`/staff/order-items/${itemId}/confirm-receive`);
+};
+
+// Phục vụ xác nhận đã giao tới bàn (PATCH /api/staff/order-items/:itemId/delivered)
+export const markItemDelivered = (itemId) => {
+  return api.patch(`/staff/order-items/${itemId}/delivered`);
 };
 
 // ==================== ĐẶT MÓN ====================

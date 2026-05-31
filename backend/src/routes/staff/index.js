@@ -31,6 +31,14 @@ router.get(
   staffController.getPendingItems,
 );
 
+// GET /api/staff/kitchen-board
+router.get(
+  "/kitchen-board",
+  auth,
+  allowRoles("staff", "chef"),
+  staffController.getKitchenBoard,
+);
+
 // ===== Đơn hàng chờ duyệt (khách QR order) =====
 // GET /api/staff/pending-orders
 router.get(
@@ -69,7 +77,7 @@ router.patch(
 router.patch(
   "/order-items/:itemId/cooking",
   auth,
-  allowRoles("staff"),
+  allowRoles("staff", "chef"),
   staffController.markItemCooking,
 );
 
@@ -77,8 +85,56 @@ router.patch(
 router.patch(
   "/order-items/:itemId/cooked",
   auth,
-  allowRoles("staff"),
+  allowRoles("staff", "chef"),
   staffController.markItemCooked,
+);
+
+// GET /api/staff/serving-items  — Món đang chờ phục vụ (serving)
+router.get(
+  "/serving-items",
+  auth,
+  allowRoles("staff"),
+  staffController.getServingItems,
+);
+
+// PATCH /api/staff/order-items/:itemId/revert-pending  — Hoàn tác đang nấu → chờ nấu
+router.patch(
+  "/order-items/:itemId/revert-pending",
+  auth,
+  allowRoles("staff", "chef"),
+  staffController.revertItemToPreparing,
+);
+
+// PATCH /api/staff/order-items/:itemId/revert-cooking  — Hoàn tác đã xong → đang nấu
+router.patch(
+  "/order-items/:itemId/revert-cooking",
+  auth,
+  allowRoles("staff", "chef"),
+  staffController.revertItemToCooking,
+);
+
+// PATCH /api/staff/order-items/:itemId/serving  — Bếp giao cho phục vụ (cooked → serving)
+router.patch(
+  "/order-items/:itemId/serving",
+  auth,
+  allowRoles("staff", "chef"),
+  staffController.markItemServing,
+);
+
+// PATCH /api/staff/order-items/:itemId/confirm-receive  — Phục vụ xác nhận nhận từ bếp (serving → delivering)
+router.patch(
+  "/order-items/:itemId/confirm-receive",
+  auth,
+  allowRoles("staff"),
+  staffController.confirmReceiveFromKitchen,
+);
+
+// PATCH /api/staff/order-items/:itemId/delivered  — Phục vụ xác nhận đã giao tới bàn (delivering → served)
+router.patch(
+  "/order-items/:itemId/delivered",
+  auth,
+  allowRoles("staff"),
+  staffController.markItemDelivered,
 );
 
 // PATCH /api/staff/order-items/:itemId/serve  — Đã lên món (nhân viên xác nhận)

@@ -57,6 +57,19 @@ const getPendingItems = async (req, res, next) => {
 };
 
 /**
+ * GET /api/staff/kitchen-board
+ * Dữ liệu cho màn bếp
+ */
+const getKitchenBoard = async (req, res, next) => {
+  try {
+    const board = await staffService.getKitchenBoard();
+    res.status(200).json(board);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * GET /api/staff/pending-orders
  * Lấy danh sách đơn hàng chờ duyệt (orders.status = 'pending')
  */
@@ -186,6 +199,129 @@ const markItemCooked = async (req, res, next) => {
     if (
       error.message.includes("Không tìm thấy") ||
       error.message.includes("Không thể xác nhận")
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/staff/order-items/:itemId/serving
+ * Bếp chuyển món sang chờ phục vụ (cooked → serving)
+ */
+const markItemServing = async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+    const item = await staffService.markItemServing(itemId);
+    res
+      .status(200)
+      .json({ message: "Đã chuyển sang chờ phục vụ.", data: item });
+  } catch (error) {
+    if (
+      error.message.includes("Không tìm thấy") ||
+      error.message.includes("Không thể giao")
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
+/**
+ * GET /api/staff/serving-items
+ * Lấy các món chờ phục vụ (status = 'serving')
+ */
+const getServingItems = async (req, res, next) => {
+  try {
+    const items = await staffService.getServingItems();
+    res.status(200).json(items);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/staff/order-items/:itemId/confirm-receive
+ * Nhân viên xác nhận đã nhận món từ bếp (serving → delivering)
+ */
+const confirmReceiveFromKitchen = async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+    const staffId = req.user?.id || null;
+    const item = await staffService.confirmReceiveFromKitchen(itemId, staffId);
+    res.status(200).json({ message: "Đã xác nhận nhận món.", data: item });
+  } catch (error) {
+    if (
+      error.message.includes("Không tìm thấy") ||
+      error.message.includes("Không thể xác nhận")
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/staff/order-items/:itemId/delivered
+ * Nhân viên xác nhận đã giao món tới bàn (delivering → served)
+ */
+const markItemDelivered = async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+    const staffId = req.user?.id || null;
+    const item = await staffService.markItemDelivered(itemId, staffId);
+    res.status(200).json({ message: "Đã giao món tới bàn.", data: item });
+  } catch (error) {
+    if (
+      error.message.includes("Không tìm thấy") ||
+      error.message.includes("Không thể đánh dấu")
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/staff/order-items/:itemId/revert-pending
+ * Bếp hoàn tác món đang nấu về chờ nấu (cooking → preparing)
+ */
+const revertItemToPreparing = async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+    const item = await staffService.revertItemToPreparing(itemId);
+    res.status(200).json({
+      message: "Đã hoàn tác về chờ nấu.",
+      data: item,
+    });
+  } catch (error) {
+    if (
+      error.message.includes("Không tìm thấy") ||
+      error.message.includes("Không thể hoàn tác")
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/staff/order-items/:itemId/revert-cooking
+ * Bếp hoàn tác món đã xong về đang nấu (cooked → cooking)
+ */
+const revertItemToCooking = async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+    const item = await staffService.revertItemToCooking(itemId);
+    res.status(200).json({
+      message: "Đã hoàn tác về đang nấu.",
+      data: item,
+    });
+  } catch (error) {
+    if (
+      error.message.includes("Không tìm thấy") ||
+      error.message.includes("Không thể hoàn tác")
     ) {
       return res.status(400).json({ error: error.message });
     }
@@ -376,16 +512,23 @@ export const staffController = {
   getTableDetail,
   getMenu,
   getPendingItems,
+  getKitchenBoard,
   getPendingOrders,
   approveOrder,
   cancelPendingOrder,
   cancelItem,
   markItemCooking,
   markItemCooked,
+  revertItemToPreparing,
+  revertItemToCooking,
   markItemServed,
+  markItemServing,
   createOrder,
   createRequest,
   acknowledgeRequest,
   resolveRequest,
   getServiceRequests,
+  getServingItems,
+  confirmReceiveFromKitchen,
+  markItemDelivered,
 };

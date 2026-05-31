@@ -21,8 +21,15 @@ export function PendingItemsProvider({ children }) {
     try {
       setLoading(true);
       setError(null);
-      const res = await staffService.getReadyItems();
-      setItems(res.data);
+      const [readyRes, servingRes] = await Promise.all([
+        staffService.getReadyItems(),
+        staffService.getServingItems(),
+      ]);
+
+      // Hiển thị các món đang chờ phục vụ (serving) trước, rồi đến món cooked
+      const serving = Array.isArray(servingRes?.data) ? servingRes.data : [];
+      const ready = Array.isArray(readyRes?.data) ? readyRes.data : [];
+      setItems([...serving, ...ready]);
     } catch (err) {
       setError(err.response?.data?.error || "Không thể tải danh sách món chờ");
     } finally {
@@ -49,6 +56,17 @@ export function PendingItemsProvider({ children }) {
     }
   };
 
+  const confirmReceive = async (itemId) => {
+    try {
+      await staffService.confirmReceive(itemId);
+      setItems((prev) => prev.filter((i) => i.id !== itemId));
+    } catch (err) {
+      throw new Error(
+        err.response?.data?.error || "Không thể xác nhận nhận món",
+      );
+    }
+  };
+
   const cancelItem = async (itemId, reason) => {
     try {
       await staffService.cancelItem(itemId, reason);
@@ -60,7 +78,15 @@ export function PendingItemsProvider({ children }) {
 
   return (
     <PendingItemsContext.Provider
-      value={{ items, loading, error, fetchItems, markServed, cancelItem }}
+      value={{
+        items,
+        loading,
+        error,
+        fetchItems,
+        markServed,
+        confirmReceive,
+        cancelItem,
+      }}
     >
       {children}
     </PendingItemsContext.Provider>

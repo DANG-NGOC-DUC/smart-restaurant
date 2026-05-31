@@ -323,6 +323,103 @@ const getPendingItems = async () => {
 };
 
 /**
+ * GET /api/staff/kitchen-board
+ * Trả về dữ liệu cho màn bếp theo 3 cột:
+ *  - pending: món đang chờ bếp nhận
+ *  - cooking: món đang nấu
+ *  - cooked: món đã xong, chờ phục vụ
+ */
+const getKitchenBoard = async () => {
+  const rows = await knex("order_items as oi")
+    .join("orders as o", "o.id", "oi.order_id")
+    .join("sessions as s", "s.id", "o.session_id")
+    .join("tables as t", "t.id", "s.table_id")
+    .join("menu_items as mi", "mi.id", "oi.menu_item_id")
+    .whereIn("oi.status", ["preparing", "cooking", "cooked"])
+    .select(
+      "oi.id",
+      "oi.order_id",
+      "oi.quantity",
+      "oi.note",
+      "oi.status",
+      "oi.created_at",
+      "mi.name as menu_item_name",
+      "t.name as table_name",
+      "t.code as table_code",
+      "o.created_at as order_created_at",
+    )
+    .orderBy("o.created_at", "asc")
+    .orderBy("oi.created_at", "asc");
+
+  const orderMap = new Map();
+
+  for (const row of rows) {
+    if (!orderMap.has(row.order_id)) {
+      orderMap.set(row.order_id, {
+        id: row.order_id,
+        table: row.table_name || `Bàn ${row.table_code}`,
+        createdAt: row.order_created_at,
+        noteSet: new Set(),
+        items: [],
+      });
+    }
+
+    const order = orderMap.get(row.order_id);
+    if (row.note) {
+      order.noteSet.add(row.note);
+    }
+    order.items.push({
+      id: row.id,
+      qty: row.quantity,
+      name: row.menu_item_name,
+      status: row.status,
+    });
+  }
+
+  const sortByCreatedAt = (a, b) => {
+    const left = new Date(a.createdAt).getTime();
+    const right = new Date(b.createdAt).getTime();
+    return left - right;
+  };
+
+  const toBoardOrder = (order) => {
+    const statuses = order.items.map((item) => item.status);
+    const boardStatus = statuses.includes("cooking")
+      ? "cooking"
+      : statuses.includes("cooked")
+        ? "completed"
+        : "pending";
+
+    return {
+      id: order.id,
+      table: order.table,
+      created_at: order.createdAt,
+      note:
+        order.noteSet.size > 0 ? Array.from(order.noteSet).join(" · ") : null,
+      status: boardStatus,
+      item_ids: order.items.map((item) => item.id),
+      items: order.items.map((item) => ({
+        id: item.id,
+        qty: item.qty,
+        name: item.name,
+      })),
+    };
+  };
+
+  const boardOrders = Array.from(orderMap.values())
+    .map(toBoardOrder)
+    .sort(sortByCreatedAt);
+
+  return {
+    pendingOrders: boardOrders.filter((order) => order.status === "pending"),
+    cookingOrders: boardOrders.filter((order) => order.status === "cooking"),
+    completedOrders: boardOrders.filter(
+      (order) => order.status === "completed",
+    ),
+  };
+};
+
+/**
  * Staff hủy món khi khách yêu cầu (chưa lên).
  * Chỉ cho phép hủy khi status = 'preparing' | 'cooking' | 'cooked'.
  * Atomic WHERE để chống race condition.
@@ -410,6 +507,185 @@ const markItemCooked = async (itemId) => {
   const [updated] = await knex("order_items")
     .where({ id: itemId, status: "cooking" })
     .update({ status: "cooked" })
+    .returning("*");
+
+  if (!updated) {
+    throw new Error("Món đã được cập nhật bởi người khác. Vui lòng thử lại.");
+  }
+
+  return updated;
+};
+
+/**
+ * Bếp chuyển món đã nấu xong sang chờ phục vụ (cooked → serving)
+ */
+const markItemServing = async (itemId) => {
+  const item = await knex("order_items").where({ id: itemId }).first();
+  if (!item) {
+    throw new Error("Không tìm thấy món.");
+  }
+  if (item.status !== "cooked") {
+    throw new Error(
+      `Không thể giao. Trạng thái hiện tại: '${item.status}'. Chỉ giao được món đã nấu xong.`,
+    );
+  }
+
+  const [updated] = await knex("order_items")
+    .where({ id: itemId, status: "cooked" })
+    .update({ status: "serving" })
+    .returning("*");
+
+  if (!updated) {
+    throw new Error("Món đã được cập nhật bởi người khác. Vui lòng thử lại.");
+  }
+
+  return updated;
+};
+
+/**
+ * Nhân viên xác nhận đã nhận từ bếp (serving → delivering)
+ */
+const confirmReceiveFromKitchen = async (itemId, staffId = null) => {
+  const item = await knex("order_items").where({ id: itemId }).first();
+  if (!item) {
+    throw new Error("Không tìm thấy món.");
+  }
+  if (item.status !== "serving") {
+    throw new Error(
+      `Không thể xác nhận nhận. Trạng thái hiện tại: '${item.status}'. Chỉ xác nhận được món đang chờ phục vụ.`,
+    );
+  }
+
+  const [updated] = await knex("order_items")
+    .where({ id: itemId, status: "serving" })
+    .update({
+      status: "delivering",
+      delivered_by: staffId,
+      delivering_at: knex.fn.now(),
+    })
+    .returning("*");
+
+  if (!updated) {
+    throw new Error("Món đã được cập nhật bởi người khác. Vui lòng thử lại.");
+  }
+
+  return updated;
+};
+
+/**
+ * Nhân viên xác nhận đã giao món tới bàn (delivering → served)
+ */
+const markItemDelivered = async (itemId, staffId = null) => {
+  const item = await knex("order_items").where({ id: itemId }).first();
+  if (!item) {
+    throw new Error("Không tìm thấy món.");
+  }
+  if (item.status !== "delivering") {
+    throw new Error(
+      `Không thể đánh dấu đã giao. Trạng thái hiện tại: '${item.status}'. Chỉ đánh dấu được món đang phục vụ.`,
+    );
+  }
+
+  const [updated] = await knex("order_items")
+    .where({ id: itemId, status: "delivering" })
+    .update({ status: "served", served_by: staffId, served_at: knex.fn.now() })
+    .returning("*");
+
+  if (!updated) {
+    throw new Error("Món đã được cập nhật bởi người khác. Vui lòng thử lại.");
+  }
+
+  return updated;
+};
+
+/**
+ * GET /api/staff/serving-items
+ * Trả về danh sách order_items có status = 'serving' (chờ phục vụ)
+ */
+const getServingItems = async () => {
+  const rows = await knex("order_items as oi")
+    .join("orders as o", "o.id", "oi.order_id")
+    .join("sessions as s", "s.id", "o.session_id")
+    .join("tables as t", "t.id", "s.table_id")
+    .join("menu_items as mi", "mi.id", "oi.menu_item_id")
+    .whereIn("oi.status", ["serving"])
+    .select(
+      "oi.id",
+      "oi.quantity",
+      "oi.note",
+      "oi.status",
+      "oi.created_at",
+      "mi.name as menu_item_name",
+      "mi.image_url",
+      "t.name as table_name",
+      "t.code as table_code",
+      "o.id as order_id",
+    )
+    .select(
+      knex.raw(
+        "EXTRACT(EPOCH FROM (NOW() - oi.created_at)) / 60 as waiting_minutes",
+      ),
+    )
+    .orderBy("oi.created_at", "asc");
+
+  return rows.map((row) => ({
+    id: row.id,
+    menu_item_name: row.menu_item_name,
+    image_url: row.image_url,
+    quantity: row.quantity,
+    note: row.note,
+    status: row.status,
+    table_name: row.table_name || `Bàn ${row.table_code}`,
+    table_code: row.table_code,
+    order_id: row.order_id,
+    created_at: row.created_at,
+    waiting_minutes: Math.round(parseFloat(row.waiting_minutes) || 0),
+  }));
+};
+
+/**
+ * Bếp hoàn tác trạng thái món đã nhận nấu (cooking → preparing)
+ */
+const revertItemToPreparing = async (itemId) => {
+  const item = await knex("order_items").where({ id: itemId }).first();
+  if (!item) {
+    throw new Error("Không tìm thấy món.");
+  }
+  if (item.status !== "cooking") {
+    throw new Error(
+      `Không thể hoàn tác. Trạng thái hiện tại: '${item.status}'. Chỉ hoàn tác được món đang nấu.`,
+    );
+  }
+
+  const [updated] = await knex("order_items")
+    .where({ id: itemId, status: "cooking" })
+    .update({ status: "preparing" })
+    .returning("*");
+
+  if (!updated) {
+    throw new Error("Món đã được cập nhật bởi người khác. Vui lòng thử lại.");
+  }
+
+  return updated;
+};
+
+/**
+ * Bếp hoàn tác trạng thái món đã xong (cooked → cooking)
+ */
+const revertItemToCooking = async (itemId) => {
+  const item = await knex("order_items").where({ id: itemId }).first();
+  if (!item) {
+    throw new Error("Không tìm thấy món.");
+  }
+  if (item.status !== "cooked") {
+    throw new Error(
+      `Không thể hoàn tác. Trạng thái hiện tại: '${item.status}'. Chỉ hoàn tác được món đã xong.`,
+    );
+  }
+
+  const [updated] = await knex("order_items")
+    .where({ id: itemId, status: "cooked" })
+    .update({ status: "cooking" })
     .returning("*");
 
   if (!updated) {
@@ -794,13 +1070,20 @@ export const staffService = {
   getTableDetail,
   getMenuForStaff,
   getPendingOrders,
+  getKitchenBoard,
   approveOrder,
   cancelPendingOrder,
   getPendingItems,
   cancelItem,
   markItemCooking,
   markItemCooked,
+  markItemServing,
+  revertItemToPreparing,
+  revertItemToCooking,
   markItemServed,
+  confirmReceiveFromKitchen,
+  markItemDelivered,
+  getServingItems,
   createOrderForTable,
   createPaymentRequest,
   acknowledgeRequest,
