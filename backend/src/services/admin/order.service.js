@@ -4,9 +4,7 @@ import { OrderItemModel } from "../../models/orderItem.model.js";
 import { MenuItemIngredientModel } from "../../models/menuItemIngredient.model.js";
 import { InventoryModel } from "../../models/inventory.model.js";
 import { MenuItemVariantModel } from "../../models/menuItemVariant.model.js";
-import {
-  refreshAvailabilityForMenuItems,
-} from "../shared/menuAvailability.service.js";
+import { refreshAvailabilityForMenuItems } from "../shared/menuAvailability.service.js";
 
 /**
  * Lấy tất cả orders (có thể lọc theo status)
@@ -233,12 +231,12 @@ const updateOrderStatus = async (id, newStatus) => {
     await deductInventoryForOrder(id);
   }
 
-    // Hủy order active → hoàn tồn kho + cancel items đang preparing/cooking/cooked
+  // Hủy order active → hoàn tồn kho + cancel items đang preparing/cooking/cooked
   if (newStatus === "cancelled" && order.status === "active") {
     await restoreInventoryForOrder(id);
     await knex("order_items")
-        .where({ order_id: id })
-        .whereIn("status", ["preparing", "cooking", "cooked"])
+      .where({ order_id: id })
+      .whereIn("status", ["preparing", "cooking", "cooked"])
       .update({ status: "cancelled" });
   }
 
