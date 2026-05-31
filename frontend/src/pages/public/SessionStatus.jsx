@@ -7,7 +7,8 @@ import logo from "../../assets/logo.png";
 
 const STATUS_MAP = {
   pending: { label: "Chờ duyệt", color: "bg-yellow-500" },
-  preparing: { label: "Đang chế biến", color: "bg-accent" },
+  preparing: { label: "Chờ bếp nhận", color: "bg-amber-500" },
+  cooking: { label: "Đang chế biến", color: "bg-accent" },
   cooked: { label: "Chờ phục vụ", color: "bg-orange-500" },
   served: { label: "Đã phục vụ", color: "bg-primary" },
   cancelled: { label: "Đã hủy", color: "bg-red-500" },

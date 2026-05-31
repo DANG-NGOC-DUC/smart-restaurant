@@ -22,8 +22,13 @@ const STATUS_MAP = {
     icon: Clock,
   },
   preparing: {
-    label: "Đang nấu",
+    label: "Chờ bếp nhận",
     color: "bg-amber-100 text-amber-700",
+    icon: ChefHat,
+  },
+  cooking: {
+    label: "Đang nấu",
+    color: "bg-amber-200 text-amber-800",
     icon: ChefHat,
   },
   cooked: {
@@ -114,9 +119,10 @@ export default function TableDetail() {
 
   // Gom tất cả items từ tất cả orders (flat list) để thống kê
   const allItems = data.orders?.flatMap((o) => o.items) || [];
-  const processingCount = allItems.filter(
+  const preparingCount = allItems.filter(
     (i) => i.status === "preparing",
   ).length;
+  const cookingCount = allItems.filter((i) => i.status === "cooking").length;
   const cookedCount = allItems.filter((i) => i.status === "cooked").length;
   const servedCount = allItems.filter((i) => i.status === "served").length;
   const cancelledCount = allItems.filter(
@@ -165,16 +171,22 @@ export default function TableDetail() {
               </span>
             </div>
             <div className="flex gap-3 text-xs flex-wrap">
-              {processingCount > 0 && (
+              {preparingCount > 0 && (
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">
                   <ChefHat className="w-3 h-3" />
-                  {processingCount} đang nấu
+                  {preparingCount} chờ bếp nhận
+                </span>
+              )}
+              {cookingCount > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-200 text-amber-800 font-medium">
+                  <ChefHat className="w-3 h-3" />
+                  {cookingCount} đang nấu
                 </span>
               )}
               {cookedCount > 0 && (
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 text-orange-700 font-medium">
                   <CheckCircle2 className="w-3 h-3" />
-                  {cookedCount} đã nấu
+                  {cookedCount} chờ phục vụ
                 </span>
               )}
               {servedCount > 0 && (

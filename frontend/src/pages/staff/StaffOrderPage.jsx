@@ -18,7 +18,8 @@ import * as staffService from "../../services/staff.service";
 
 const ITEM_STATUS = {
   pending: { label: "Chờ", color: "text-yellow-600", icon: Clock },
-  preparing: { label: "Đang nấu", color: "text-amber-600", icon: ChefHat },
+  preparing: { label: "Chờ bếp nhận", color: "text-amber-600", icon: ChefHat },
+  cooking: { label: "Đang nấu", color: "text-amber-700", icon: ChefHat },
   cooked: {
     label: "Chờ phục vụ",
     color: "text-orange-600",

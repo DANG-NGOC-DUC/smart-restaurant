@@ -241,7 +241,7 @@ const cancelPendingOrder = async (orderId) => {
 /**
  * Hủy một món trong đơn hàng:
  *  - order_items.status → 'cancelled'
- *  - Chỉ hủy được khi status = 'preparing' hoặc 'cooked' (chưa lên bàn)
+ *  - Chỉ hủy được khi status = 'preparing' | 'cooking' | 'cooked' (chưa lên bàn)
  *
  * @param {string} itemId - UUID của order_item cần hủy
  * @returns {object} order_item đã được hủy
@@ -263,7 +263,11 @@ const cancelOrderItem = async (itemId) => {
     throw new Error("Món này đã được hủy trước đó.");
   }
 
-  if (item.status !== "preparing" && item.status !== "cooked") {
+  if (
+    item.status !== "preparing" &&
+    item.status !== "cooking" &&
+    item.status !== "cooked"
+  ) {
     throw new Error(
       `Không thể hủy món. Trạng thái hiện tại: '${item.status}'.`,
     );
@@ -271,7 +275,7 @@ const cancelOrderItem = async (itemId) => {
 
   const [updatedItem] = await knex("order_items")
     .where({ id: itemId })
-    .whereIn("status", ["preparing", "cooked"])
+    .whereIn("status", ["preparing", "cooking", "cooked"])
     .update({ status: "cancelled" })
     .returning("*");
 
@@ -321,7 +325,7 @@ const checkout = async (tableId, paymentMethod = "cash") => {
     const preparingItems = await trx("order_items as oi")
       .join("orders as o", "o.id", "oi.order_id")
       .where("o.session_id", session.id)
-      .where("oi.status", "preparing")
+      .whereIn("oi.status", ["preparing", "cooking"])
       .select("oi.id");
 
     if (preparingItems.length > 0) {

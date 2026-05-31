@@ -148,8 +148,31 @@ const cancelItem = async (req, res, next) => {
 };
 
 /**
+ * PATCH /api/staff/order-items/:itemId/cooking
+ * Bếp xác nhận đã nhận nấu (preparing → cooking)
+ */
+const markItemCooking = async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+    const item = await staffService.markItemCooking(itemId);
+    res.status(200).json({
+      message: "Đã nhận nấu món.",
+      data: item,
+    });
+  } catch (error) {
+    if (
+      error.message.includes("Không tìm thấy") ||
+      error.message.includes("Không thể nhận")
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
+/**
  * PATCH /api/staff/order-items/:itemId/cooked
- * Bếp xác nhận đã chế biến xong (preparing → cooked)
+ * Bếp xác nhận đã chế biến xong (cooking → cooked)
  */
 const markItemCooked = async (req, res, next) => {
   try {
@@ -172,7 +195,7 @@ const markItemCooked = async (req, res, next) => {
 
 /**
  * PATCH /api/staff/order-items/:itemId/serve
- * Nhân viên xác nhận đã lên món (preparing|cooked → served)
+ * Nhân viên xác nhận đã lên món (cooked → served)
  */
 const markItemServed = async (req, res, next) => {
   try {
@@ -357,6 +380,7 @@ export const staffController = {
   approveOrder,
   cancelPendingOrder,
   cancelItem,
+  markItemCooking,
   markItemCooked,
   markItemServed,
   createOrder,

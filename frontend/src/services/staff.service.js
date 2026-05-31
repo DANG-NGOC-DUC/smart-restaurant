@@ -64,14 +64,14 @@ export const cancelItem = (itemId, reason) => {
   return api.patch(`/staff/order-items/${itemId}/cancel`, { reason });
 };
 
-// Bếp bắt đầu nấu (PATCH /api/staff/order-items/:itemId/cooking)
+// Bếp nhận nấu (PATCH /api/staff/order-items/:itemId/cooking)
 export const markItemCooking = (itemId) => {
   return api.patch(`/staff/order-items/${itemId}/cooking`);
 };
 
-// Bếp xác nhận món đã sẵn sàng (PATCH /api/staff/order-items/:itemId/ready)
+// Bếp xác nhận món đã nấu xong (PATCH /api/staff/order-items/:itemId/cooked)
 export const markItemReady = (itemId) => {
-  return api.patch(`/staff/order-items/${itemId}/ready`);
+  return api.patch(`/staff/order-items/${itemId}/cooked`);
 };
 
 // Alias cũ

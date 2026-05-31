@@ -46,7 +46,7 @@ const getAllOrders = async (filters = {}) => {
     const countMap = {};
     itemCounts.forEach((c) => (countMap[c.order_id] = parseInt(c.item_count)));
 
-    // Đếm số món đang nấu (preparing) và đã phục vụ (served)
+    // Đếm số món đang nấu (preparing | cooking) và đã phục vụ (served)
     const statusCounts = await knex("order_items")
       .whereIn("order_id", orderIds)
       .whereNot("status", "cancelled")
@@ -56,7 +56,10 @@ const getAllOrders = async (filters = {}) => {
     const preparingMap = {};
     const servedMap = {};
     statusCounts.forEach((c) => {
-      if (c.status === "preparing") preparingMap[c.order_id] = parseInt(c.cnt);
+      if (c.status === "preparing" || c.status === "cooking") {
+        preparingMap[c.order_id] =
+          (preparingMap[c.order_id] || 0) + parseInt(c.cnt);
+      }
       if (c.status === "served") servedMap[c.order_id] = parseInt(c.cnt);
     });
 
@@ -182,7 +185,7 @@ const getOrderHistory = async (filters = {}) => {
 
 /**
  * Lấy chi tiết 1 order kèm items
- * order_items.status: preparing | served | cancelled
+ * order_items.status: preparing | cooking | cooked | served | cancelled
  */
 const getOrderById = async (id) => {
   const order = await knex("orders")
@@ -203,7 +206,7 @@ const getOrderById = async (id) => {
  * Luồng: pending → active (duyệt) | cancelled (hủy)
  *        active → completed (thanh toán) | cancelled (hủy)
  * Khi duyệt pending → active: chuyển items pending → preparing + trừ kho
- * Khi hủy order active → hoàn tồn kho cho items đang preparing
+ * Khi hủy order active → hoàn tồn kho cho items đang preparing/cooking/cooked
  */
 const updateOrderStatus = async (id, newStatus) => {
   const validStatuses = ["active", "completed", "cancelled"];
@@ -230,11 +233,12 @@ const updateOrderStatus = async (id, newStatus) => {
     await deductInventoryForOrder(id);
   }
 
-  // Hủy order active → hoàn tồn kho + cancel items đang preparing
+    // Hủy order active → hoàn tồn kho + cancel items đang preparing/cooking/cooked
   if (newStatus === "cancelled" && order.status === "active") {
     await restoreInventoryForOrder(id);
     await knex("order_items")
-      .where({ order_id: id, status: "preparing" })
+        .where({ order_id: id })
+        .whereIn("status", ["preparing", "cooking", "cooked"])
       .update({ status: "cancelled" });
   }
 
@@ -320,7 +324,7 @@ const deductInventoryForOrder = async (orderId, trx = null) => {
 };
 
 /**
- * Hoàn tồn kho khi hủy order — hoàn cho items đang preparing hoặc đã nấu (chưa phục vụ)
+ * Hoàn tồn kho khi hủy order — hoàn cho items đang preparing/cooking hoặc đã nấu (chưa phục vụ)
  */
 const restoreInventoryForOrder = async (orderId, trx = null) => {
   const run = async (db) => {
@@ -328,7 +332,13 @@ const restoreInventoryForOrder = async (orderId, trx = null) => {
     const menuItemIds = new Set();
 
     for (const item of items) {
-      if (item.status !== "preparing" && item.status !== "cooked") continue;
+      if (
+        item.status !== "preparing" &&
+        item.status !== "cooking" &&
+        item.status !== "cooked"
+      ) {
+        continue;
+      }
       menuItemIds.add(item.menu_item_id);
 
       // Lấy hệ số nhân từ variant
