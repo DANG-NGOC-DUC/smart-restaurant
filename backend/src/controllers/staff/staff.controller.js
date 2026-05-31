@@ -45,7 +45,7 @@ const getTableDetail = async (req, res, next) => {
 
 /**
  * GET /api/staff/pending-items
- * Lấy danh sách món chờ phục vụ (status = 'preparing' | 'cooked')
+ * Lấy danh sách món chờ phục vụ (status = 'cooked')
  */
 const getPendingItems = async (req, res, next) => {
   try {
@@ -86,6 +86,29 @@ const approveOrder = async (req, res, next) => {
       error.message.includes("không tồn tại") ||
       error.message.includes("đã được duyệt") ||
       error.message.includes("Không thể duyệt")
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/staff/orders/:orderId/cancel
+ * Hủy đơn hàng QR đang chờ xác nhận (pending)
+ */
+const cancelPendingOrder = async (req, res, next) => {
+  try {
+    const { orderId } = req.params;
+    const order = await staffService.cancelPendingOrder(orderId);
+    res.status(200).json({
+      message: "Đã hủy đơn hàng.",
+      data: order,
+    });
+  } catch (error) {
+    if (
+      error.message.includes("không tồn tại") ||
+      error.message.includes("Chỉ có thể hủy")
     ) {
       return res.status(400).json({ error: error.message });
     }
@@ -332,6 +355,7 @@ export const staffController = {
   getPendingItems,
   getPendingOrders,
   approveOrder,
+  cancelPendingOrder,
   cancelItem,
   markItemCooked,
   markItemServed,

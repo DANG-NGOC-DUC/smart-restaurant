@@ -52,11 +52,28 @@ export function PendingOrdersProvider({ children }) {
     }
   };
 
+  const cancel = async (orderId) => {
+    try {
+      await staffService.cancelPendingOrder(orderId);
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    } catch (err) {
+      throw new Error(err.response?.data?.error || "Không thể hủy đơn hàng");
+    }
+  };
+
   const pendingCount = orders.length;
 
   return (
     <PendingOrdersContext.Provider
-      value={{ orders, loading, error, fetchOrders, approve, pendingCount }}
+      value={{
+        orders,
+        loading,
+        error,
+        fetchOrders,
+        approve,
+        cancel,
+        pendingCount,
+      }}
     >
       {children}
     </PendingOrdersContext.Provider>

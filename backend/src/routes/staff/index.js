@@ -48,6 +48,14 @@ router.patch(
   staffController.approveOrder,
 );
 
+// PATCH /api/staff/orders/:orderId/cancel  — Hủy đơn chờ xác nhận
+router.patch(
+  "/orders/:orderId/cancel",
+  auth,
+  allowRoles("staff"),
+  staffController.cancelPendingOrder,
+);
+
 // ===== Hành động nhanh =====
 // PATCH /api/staff/order-items/:itemId/cancel  — Hủy món
 router.patch(

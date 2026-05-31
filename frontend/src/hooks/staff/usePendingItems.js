@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import * as staffService from "../../services/staff.service";
 import { useSupabaseRealtime } from "../shared/useSupabaseRealtime";
 
-// Theo dõi order_items: khi status đổi thành ready → hiện lên list
+// Theo dõi order_items: khi status đổi thành cooked → hiện lên list
 const PENDING_SUBSCRIPTIONS = [{ table: "order_items", event: "*" }];
 
 export function usePendingItems() {

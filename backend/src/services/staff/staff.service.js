@@ -256,10 +256,29 @@ const approveOrder = async (orderId) => {
 };
 
 /**
+ * PATCH /api/staff/orders/:orderId/cancel
+ * Hủy đơn hàng QR đang chờ xác nhận (pending).
+ */
+const cancelPendingOrder = async (orderId) => {
+  const order = await knex("orders").where({ id: orderId }).first();
+
+  if (!order) {
+    throw new Error("Đơn hàng không tồn tại.");
+  }
+
+  if (order.status !== "pending") {
+    throw new Error(
+      `Chỉ có thể hủy đơn đang chờ xác nhận. Trạng thái hiện tại: '${order.status}'.`,
+    );
+  }
+
+  return orderService.updateOrderStatus(orderId, "cancelled");
+};
+
+/**
  * GET /api/staff/pending-items
- * Trả về danh sách order_items có status = 'preparing' | 'cooked'.
- * Bếp không thao tác trên hệ thống — chỉ bấm chuông vật lý.
- * NV nghe chuông → bưng đồ → bấm "Đã lên" trên app.
+ * Trả về danh sách order_items có status = 'cooked' (chờ mang ra bàn).
+ * NV bưng đồ → bấm "Đã lên" trên app.
  * Sắp xếp theo created_at ASC (món cũ nhất lên đầu).
  */
 const getPendingItems = async () => {
@@ -268,7 +287,7 @@ const getPendingItems = async () => {
     .join("sessions as s", "s.id", "o.session_id")
     .join("tables as t", "t.id", "s.table_id")
     .join("menu_items as mi", "mi.id", "oi.menu_item_id")
-    .whereIn("oi.status", ["preparing", "cooked"])
+    .whereIn("oi.status", ["cooked"])
     .select(
       "oi.id",
       "oi.quantity",
@@ -378,15 +397,15 @@ const markItemServed = async (itemId) => {
   if (!item) {
     throw new Error("Không tìm thấy món.");
   }
-  if (item.status !== "cooked" && item.status !== "preparing") {
+  if (item.status !== "cooked") {
     throw new Error(
-      `Không thể lên món. Trạng thái hiện tại: '${item.status}'. Chỉ lên được món đang nấu hoặc đã chế biến xong.`,
+      `Không thể lên món. Trạng thái hiện tại: '${item.status}'. Chỉ lên được món đã chế biến xong.`,
     );
   }
 
   const [updated] = await knex("order_items")
     .where({ id: itemId })
-    .whereIn("status", ["preparing", "cooked"])
+    .whereIn("status", ["cooked"])
     .update({ status: "served" })
     .returning("*");
 
@@ -746,6 +765,7 @@ export const staffService = {
   getMenuForStaff,
   getPendingOrders,
   approveOrder,
+  cancelPendingOrder,
   getPendingItems,
   cancelItem,
   markItemCooked,

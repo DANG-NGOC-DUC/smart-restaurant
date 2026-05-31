@@ -65,7 +65,7 @@ const getItemStatusLabel = (status) => {
   const map = {
     pending: "Chờ duyệt",
     preparing: "Đang nấu",
-    cooked: "Đã nấu",
+    cooked: "Chờ phục vụ",
     served: "Đã lên",
     cancelled: "Đã hủy",
   };
@@ -336,6 +336,7 @@ function OrderPanel({
   canCheckout,
   canPrintBill,
   onApproveOrder,
+  onCancelPendingOrder,
   onCancelItem,
   onCheckout,
   onPrintBill,
@@ -467,26 +468,48 @@ function OrderPanel({
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={() => onApproveOrder(order.id)}
-                  disabled={actionLoading || !canApproveOrders}
-                  className={`w-full py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm ${
-                    canApproveOrders
-                      ? "bg-orange-500 hover:bg-orange-600 text-white"
-                      : "bg-orange-100 text-orange-600 cursor-not-allowed"
-                  }`}
-                >
-                  {actionLoading ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : canApproveOrders ? (
-                    <>
-                      <CircleCheckBig size={16} />
-                      Xác nhận đơn — Gửi bếp
-                    </>
-                  ) : (
-                    "Chỉ xem"
-                  )}
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => onCancelPendingOrder(order.id)}
+                    disabled={actionLoading || !canApproveOrders}
+                    className={`py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm ${
+                      canApproveOrders
+                        ? "bg-red-100 hover:bg-red-200 text-red-700"
+                        : "bg-orange-100 text-orange-600 cursor-not-allowed"
+                    }`}
+                  >
+                    {actionLoading ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : canApproveOrders ? (
+                      <>
+                        <X size={16} />
+                        Hủy đơn
+                      </>
+                    ) : (
+                      "Chỉ xem"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => onApproveOrder(order.id)}
+                    disabled={actionLoading || !canApproveOrders}
+                    className={`py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm ${
+                      canApproveOrders
+                        ? "bg-orange-500 hover:bg-orange-600 text-white"
+                        : "bg-orange-100 text-orange-600 cursor-not-allowed"
+                    }`}
+                  >
+                    {actionLoading ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : canApproveOrders ? (
+                      <>
+                        <CircleCheckBig size={16} />
+                        Xác nhận đơn
+                      </>
+                    ) : (
+                      "Chỉ xem"
+                    )}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -1164,6 +1187,29 @@ export default function CashierPage() {
     [selectedTableId, fetchTables, fetchOrders, showToast, canApproveOrders],
   );
 
+  // ── API 1b: Hủy đơn pending ──
+  const handleCancelPendingOrder = useCallback(
+    async (orderId) => {
+      if (!canApproveOrders) {
+        showToast("error", "Bạn chưa được cấp quyền hủy đơn.");
+        return;
+      }
+      if (!window.confirm("Hủy đơn này vì không có khách?")) return;
+      setActionLoading(true);
+      try {
+        await cashierApi.cancelPendingOrder(orderId);
+        showToast("success", "Đã hủy đơn hàng.");
+        await Promise.all([fetchTables(), fetchOrders(selectedTableId)]);
+      } catch (err) {
+        const msg = err.response?.data?.error || "Lỗi khi hủy đơn hàng";
+        showToast("error", msg);
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [selectedTableId, fetchTables, fetchOrders, showToast, canApproveOrders],
+  );
+
   // ── API 2: Hủy món ──
   const handleCancelItem = useCallback(
     async (itemId) => {
@@ -1636,6 +1682,7 @@ export default function CashierPage() {
                 canCheckout={canCheckout}
                 canPrintBill={canPrintBill}
                 onApproveOrder={handleApproveOrder}
+                onCancelPendingOrder={handleCancelPendingOrder}
                 onCancelItem={handleCancelItem}
                 onCheckout={handleCheckout}
                 onPrintBill={handlePrintBill}

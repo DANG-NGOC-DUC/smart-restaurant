@@ -27,7 +27,7 @@ const STATUS_MAP = {
     icon: ChefHat,
   },
   cooked: {
-    label: "Đã nấu",
+    label: "Chờ phục vụ",
     color: "bg-orange-100 text-orange-700",
     icon: CheckCircle2,
   },

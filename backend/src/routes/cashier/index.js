@@ -36,6 +36,16 @@ router.patch(
   cashierController.approveOrder,
 );
 
+// ===== Hủy đơn QR chờ xác nhận =====
+// PATCH /api/cashier/orders/:orderId/cancel
+router.patch(
+  "/orders/:orderId/cancel",
+  auth,
+  allowRoles("staff", "admin"),
+  requirePermission("cashier.orders.approve"),
+  cashierController.cancelPendingOrder,
+);
+
 // ===== Hủy món ngoại lệ =====
 // PATCH /api/cashier/order-items/:itemId/cancel
 router.patch(

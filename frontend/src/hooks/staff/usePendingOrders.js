@@ -47,6 +47,15 @@ export function usePendingOrders() {
     }
   };
 
+  const cancel = async (orderId) => {
+    try {
+      await staffService.cancelPendingOrder(orderId);
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    } catch (err) {
+      throw new Error(err.response?.data?.error || "Không thể hủy đơn hàng");
+    }
+  };
+
   const pendingCount = orders.length;
 
   return {
@@ -55,6 +64,7 @@ export function usePendingOrders() {
     error,
     fetchOrders,
     approve,
+    cancel,
     pendingCount,
   };
 }

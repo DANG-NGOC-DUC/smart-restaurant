@@ -6,16 +6,26 @@ import {
   CheckCircle2,
   Clock,
   MapPin,
+  X,
 } from "lucide-react";
 import { usePendingOrders } from "../../context/PendingOrdersContext";
 
 function PendingOrders() {
-  const { orders, loading, error, fetchOrders, approve, pendingCount } =
+  const { orders, loading, error, fetchOrders, approve, cancel, pendingCount } =
     usePendingOrders();
 
   const handleApprove = async (orderId) => {
     try {
       await approve(orderId);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleCancel = async (orderId) => {
+    if (!window.confirm("Hủy đơn này vì không có khách?")) return;
+    try {
+      await cancel(orderId);
     } catch (err) {
       alert(err.message);
     }
@@ -142,18 +152,27 @@ function PendingOrders() {
             ))}
           </div>
 
-          {/* Footer: total + approve button */}
-          <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
+          {/* Footer: total + actions */}
+          <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
             <span className="text-sm font-bold text-slate-900">
               Tổng: {formatMoney(order.total_price)}
             </span>
-            <button
-              onClick={() => handleApprove(order.id)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-sea-600 text-white text-xs font-semibold rounded-lg hover:bg-sea-700 active:scale-95 transition-all"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Xác nhận đơn</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleCancel(order.id)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-700 text-xs font-semibold rounded-lg hover:bg-rose-100 active:scale-95 transition-all"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Hủy đơn</span>
+              </button>
+              <button
+                onClick={() => handleApprove(order.id)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-sea-600 text-white text-xs font-semibold rounded-lg hover:bg-sea-700 active:scale-95 transition-all"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Xác nhận đơn</span>
+              </button>
+            </div>
           </div>
         </div>
       ))}

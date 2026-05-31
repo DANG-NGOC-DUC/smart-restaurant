@@ -33,18 +33,14 @@ export const getMenu = () => {
   return api.get("/staff/menu");
 };
 
-// Lấy danh sách món cho bếp (GET /api/staff/kitchen-items)
-export const getKitchenItems = () => {
-  return api.get("/staff/kitchen-items");
-};
-
-// Lấy danh sách món đã sẵn sàng để phục vụ (GET /api/staff/ready-items)
-export const getReadyItems = () => {
-  return api.get("/staff/ready-items");
+// Lấy danh sách món chờ phục vụ (GET /api/staff/pending-items)
+export const getPendingItems = () => {
+  return api.get("/staff/pending-items");
 };
 
 // Alias cũ để tránh gãy các màn hình đã dùng tên cũ
-export const getPendingItems = getKitchenItems;
+export const getKitchenItems = getPendingItems;
+export const getReadyItems = getPendingItems;
 
 // ==================== DUYỆT ĐƠN ====================
 
@@ -56,6 +52,11 @@ export const getPendingOrders = () => {
 // Duyệt đơn (PATCH /api/staff/orders/:orderId/approve)
 export const approveOrder = (orderId) => {
   return api.patch(`/staff/orders/${orderId}/approve`);
+};
+
+// Hủy đơn chờ xác nhận (PATCH /api/staff/orders/:orderId/cancel)
+export const cancelPendingOrder = (orderId) => {
+  return api.patch(`/staff/orders/${orderId}/cancel`);
 };
 
 // Hủy món (PATCH /api/staff/order-items/:itemId/cancel)

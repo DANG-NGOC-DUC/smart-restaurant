@@ -59,6 +59,31 @@ const approveOrder = async (req, res, next) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════
+// 1b. HỦY ĐƠN QR CHỜ XÁC NHẬN
+//    PATCH /api/cashier/orders/:orderId/cancel
+// ═══════════════════════════════════════════════════════════════════
+
+const cancelPendingOrder = async (req, res, next) => {
+  try {
+    const { orderId } = req.params;
+    const result = await cashierService.cancelPendingOrder(orderId);
+
+    res.status(200).json({
+      message: "Đã hủy đơn hàng.",
+      data: result,
+    });
+  } catch (error) {
+    if (
+      error.message.includes("không tồn tại") ||
+      error.message.includes("Chỉ có thể hủy")
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
 // 2. HỦY MÓN NGOẠI LỆ
 //    PATCH /api/cashier/order-items/:itemId/cancel
 // ═══════════════════════════════════════════════════════════════════
@@ -194,6 +219,7 @@ export const cashierController = {
   getTables,
   getTableOrders,
   approveOrder,
+  cancelPendingOrder,
   cancelOrderItem,
   checkoutTable,
   getServiceRequests,

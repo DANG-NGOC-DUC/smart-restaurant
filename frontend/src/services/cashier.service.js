@@ -21,6 +21,11 @@ export const approveOrder = (orderId) => {
   return api.patch(`/cashier/orders/${orderId}/approve`);
 };
 
+// Hủy đơn hàng QR chờ xác nhận (PATCH /api/cashier/orders/:orderId/cancel)
+export const cancelPendingOrder = (orderId) => {
+  return api.patch(`/cashier/orders/${orderId}/cancel`);
+};
+
 // ==================== HỦY MÓN ====================
 
 // Hủy món ngoại lệ (PATCH /api/cashier/order-items/:itemId/cancel)

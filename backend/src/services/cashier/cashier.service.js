@@ -212,6 +212,27 @@ const approveOrder = async (orderId) => {
   });
 };
 
+/**
+ * Hủy đơn hàng QR đang chờ xác nhận (pending)
+ * @param {string} orderId
+ * @returns {object} order đã được hủy
+ */
+const cancelPendingOrder = async (orderId) => {
+  const order = await knex("orders").where({ id: orderId }).first();
+
+  if (!order) {
+    throw new Error("Đơn hàng không tồn tại.");
+  }
+
+  if (order.status !== "pending") {
+    throw new Error(
+      `Chỉ có thể hủy đơn đang chờ xác nhận. Trạng thái hiện tại: '${order.status}'.`,
+    );
+  }
+
+  return orderService.updateOrderStatus(orderId, "cancelled");
+};
+
 // ═══════════════════════════════════════════════════════════════════
 // 2. HỦY MÓN NGOẠI LỆ
 //    PATCH /api/cashier/order-items/:itemId/cancel
@@ -454,6 +475,7 @@ export const cashierService = {
   getTables,
   getTableOrders,
   approveOrder,
+  cancelPendingOrder,
   cancelOrderItem,
   checkout,
   getServiceRequests,
