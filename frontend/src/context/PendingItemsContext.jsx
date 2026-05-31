@@ -21,7 +21,7 @@ export function PendingItemsProvider({ children }) {
     try {
       setLoading(true);
       setError(null);
-      const res = await staffService.getPendingItems();
+      const res = await staffService.getReadyItems();
       setItems(res.data);
     } catch (err) {
       setError(err.response?.data?.error || "Không thể tải danh sách món chờ");

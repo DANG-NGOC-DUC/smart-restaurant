@@ -33,10 +33,18 @@ export const getMenu = () => {
   return api.get("/staff/menu");
 };
 
-// Lấy danh sách món chờ phục vụ (GET /api/staff/pending-items)
-export const getPendingItems = () => {
-  return api.get("/staff/pending-items");
+// Lấy danh sách món cho bếp (GET /api/staff/kitchen-items)
+export const getKitchenItems = () => {
+  return api.get("/staff/kitchen-items");
 };
+
+// Lấy danh sách món đã sẵn sàng để phục vụ (GET /api/staff/ready-items)
+export const getReadyItems = () => {
+  return api.get("/staff/ready-items");
+};
+
+// Alias cũ để tránh gãy các màn hình đã dùng tên cũ
+export const getPendingItems = getKitchenItems;
 
 // ==================== DUYỆT ĐƠN ====================
 
@@ -55,10 +63,18 @@ export const cancelItem = (itemId, reason) => {
   return api.patch(`/staff/order-items/${itemId}/cancel`, { reason });
 };
 
-// Bếp xác nhận đã chế biến xong (PATCH /api/staff/order-items/:itemId/cooked)
-export const markItemCooked = (itemId) => {
-  return api.patch(`/staff/order-items/${itemId}/cooked`);
+// Bếp bắt đầu nấu (PATCH /api/staff/order-items/:itemId/cooking)
+export const markItemCooking = (itemId) => {
+  return api.patch(`/staff/order-items/${itemId}/cooking`);
 };
+
+// Bếp xác nhận món đã sẵn sàng (PATCH /api/staff/order-items/:itemId/ready)
+export const markItemReady = (itemId) => {
+  return api.patch(`/staff/order-items/${itemId}/ready`);
+};
+
+// Alias cũ
+export const markItemCooked = markItemReady;
 
 // Đánh dấu đã lên món (PATCH /api/staff/order-items/:itemId/serve)
 export const markItemServed = (itemId) => {

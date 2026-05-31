@@ -33,6 +33,10 @@ import GoogleCallback from "../pages/auth/GoogleCallback";
 import CustomerLogin from "../pages/public/CustomerLogin";
 import Reservation from "../pages/public/Reservation";
 import MyReservations from "../pages/public/MyReservations";
+import ChefLayout from "../layouts/ChefLayout";
+import ChefDashboard from "../pages/chef/ChefDashboard";
+import ChefStatistics from "../pages/chef/ChefStatistics";
+import ChefInventory from "../pages/chef/ChefInventory";
 
 export default function AppRoutes() {
   return (
@@ -70,6 +74,15 @@ export default function AppRoutes() {
         <Route path="alerts" element={<StaffAlerts />} />
         <Route path="table/:tableId" element={<StaffTableDetail />} />
         <Route path="order/:tableId" element={<StaffOrderPage />} />
+      </Route>
+
+      {/* Chef routes */}
+      <Route path="/chef" element={<ChefLayout />}>
+        <Route index element={<ChefDashboard />} />
+
+        <Route path="statistics" element={<ChefStatistics />} />
+
+        <Route path="inventory" element={<ChefInventory />} />
       </Route>
 
       {/* Cashier POS - standalone full-screen */}

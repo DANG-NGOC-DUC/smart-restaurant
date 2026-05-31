@@ -15,7 +15,7 @@ export async function up(knex) {
 
     // Phân quyền hệ thống
     table
-      .enu("role", ["guest", "staff", "cashier", "admin"])
+      .enu("role", ["guest", "staff", "cashier", "chef", "admin"])
       .notNullable()
       .defaultTo("guest");
 
