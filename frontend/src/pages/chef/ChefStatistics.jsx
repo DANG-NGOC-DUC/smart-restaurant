@@ -1,62 +1,54 @@
 import TopDishCard from "../../components/chef/TopDishCard";
 import TableStatisticsCard from "../../components/chef/TableStatisticsCard";
 import { useEffect, useState } from "react";
-import * as adminService from "../../services/admin.service";
+import * as staffService from "../../services/staff.service";
 
 const DELIVERY_STORAGE_KEY = "chefLatestDelivered";
 
 function ChefStatistics() {
   const [topDishes, setTopDishes] = useState([]);
+  const [totalServed, setTotalServed] = useState(0);
   const [tableGroups, setTableGroups] = useState([]);
   const [latestDelivered, setLatestDelivered] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const fetchStatistics = async () => {
     try {
       setLoading(true);
 
-      const [topDishesRes, recentOrdersRes] = await Promise.all([
-        adminService.getDashboardTopDishes(),
-        adminService.getDashboardRecentOrders(),
-      ]);
+      const res = await staffService.getKitchenBoard();
+      const board = res.data || {};
 
       setTopDishes(
-        Array.isArray(topDishesRes.data)
-          ? topDishesRes.data.map((dish) => ({
+        Array.isArray(board.batching)
+          ? board.batching.slice(0, 5).map((dish) => ({
               id: dish.id,
               name: dish.name,
-              quantity: dish.sold ?? dish.quantity ?? 0,
+              quantity: dish.qty ?? 0,
               image: dish.image || null,
             }))
           : [],
       );
 
-      const groupedOrders = Array.isArray(recentOrdersRes.data)
-        ? recentOrdersRes.data.reduce((groups, order, index) => {
-            const groupIndex = Math.floor(index / 2);
-            if (!groups[groupIndex]) {
-              groups[groupIndex] = [];
-            }
+      setTotalServed(Number(board.totalServedToday || 0));
 
-            groups[groupIndex].push({
-              id: order.id,
-              name: order.tableName || "N/A",
-              orders: [
-                {
-                  quantity: order.itemCount || 0,
-                  name:
-                    order.status === "completed"
-                      ? "đơn hoàn thành"
-                      : order.status === "pending"
-                        ? "đơn chờ duyệt"
-                        : "đơn đang xử lý",
-                },
-              ],
-            });
-            return groups;
+      const groups = Array.isArray(board.servingTableStats)
+        ? board.servingTableStats.reduce((collection, table, index) => {
+            const groupIndex = Math.floor(index / 2);
+            if (!collection[groupIndex]) {
+              collection[groupIndex] = [];
+            }
+            collection[groupIndex].push(table);
+            return collection;
           }, [])
         : [];
 
-      setTableGroups(groupedOrders.slice(0, 3));
+      setTableGroups(groups.slice(0, 3));
+    } catch (error) {
+      console.error(error);
+      setTopDishes([]);
+      setTableGroups([]);
+      setTotalServed(0);
     } finally {
       setLoading(false);
     }
@@ -132,11 +124,7 @@ function ChefStatistics() {
             <span>Tổng món đã phục vụ:</span>
 
             <span className="text-slate-800 font-bold">
-              {topDishes.reduce(
-                (sum, dish) => sum + Number(dish.quantity || 0),
-                0,
-              )}{" "}
-              suất
+              {loading ? "Đang tải..." : `${totalServed} suất`}
             </span>
           </div>
         </div>

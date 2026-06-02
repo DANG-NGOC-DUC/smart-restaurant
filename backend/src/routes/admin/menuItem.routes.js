@@ -7,13 +7,20 @@ import { upload } from "../../utils/upload.util.js";
 const router = express.Router();
 
 // GET /api/admin/menu-items?category_id=...&is_available=true&search=...
-router.get("/", auth, allowRoles("admin"), menuItemController.getAllMenuItems);
+// Allow admin to manage and chef to view menu items
+router.get(
+  "/",
+  auth,
+  allowRoles("admin", "chef"),
+  menuItemController.getAllMenuItems,
+);
 
 // GET /api/admin/menu-items/:id
+// Allow admin to manage and chef to view menu items
 router.get(
   "/:id",
   auth,
-  allowRoles("admin"),
+  allowRoles("admin", "chef"),
   menuItemController.getMenuItemById,
 );
 
@@ -30,7 +37,7 @@ router.post(
 router.put(
   "/:id",
   auth,
-  allowRoles("admin"),
+  allowRoles("admin", "chef"),
   upload.single("image"),
   menuItemController.updateMenuItem,
 );

@@ -1,229 +1,194 @@
 import { Search } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import InventoryCard from "../../components/chef/InventoryCard";
-
-const menuItems = [
-  {
-    id: 1,
-    name: "Cua Biển Luộc Sả Gừng",
-    category_name: "Hải sản",
-    description:
-      "Cua biển tươi ngọt hấp hành sả gừng giữ nguyên độ ngọt tự nhiên từ biển cả.",
-    price: 350000,
-    status: "available",
-    image_url: "https://images.unsplash.com/photo-1559847844-5315695dadae",
-  },
-  {
-    id: 2,
-    name: "Cá Lóc Nướng Trui Miền Tây",
-    category_name: "Hải sản",
-    description:
-      "Cá lóc đồng nướng rơm thơm lừng cuốn bánh tráng chấm mắm nêm đậm vị.",
-    price: 180000,
-    status: "low",
-    image_url: "https://images.unsplash.com/photo-1544025162-d76694265947",
-  },
-  {
-    id: 3,
-    name: "Cá Điều Hồng Chiên Sốt Ớt",
-    category_name: "Hải sản",
-    description: "Cá chiên giòn rưới nước sốt chua ngọt đậm vị truyền thống.",
-    price: 160000,
-    status: "available",
-    image_url: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2",
-  },
-  {
-    id: 4,
-    name: "Bạch Tuộc Sa Tế Xào Cay",
-    category_name: "Hải sản",
-    description:
-      "Bạch tuộc tươi giòn xào lăn với sa tế tỏi ớt thơm nồng cay tê lôi cuốn.",
-    price: 200000,
-    status: "available",
-    image_url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
-  },
-  {
-    id: 5,
-    name: "Nước Ngọt Coca-Cola Lạnh",
-    category_name: "Đồ uống",
-    description:
-      "Nước ngọt có ga sảng khoái mát lạnh tức thì giải ngay hiệu quả.",
-    price: 18000,
-    status: "available",
-    image_url: "https://images.unsplash.com/photo-1629203851122-3726ecdf080e",
-  },
-  {
-    id: 6,
-    name: "Bia Saigon Special Ướp Lạnh",
-    category_name: "Đồ uống",
-    description: "Bia hương vị thượng hạng đậm đà sảng khoái bất tận cuộc vui.",
-    price: 25000,
-    status: "available",
-    image_url: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b",
-  },
-  {
-    id: 7,
-    name: "Ba Chỉ Nướng Muối Ớt",
-    category_name: "Thịt",
-    description:
-      "Thịt ba chỉ nướng vàng ruộm, đậm vị muối ớt cay thơm hấp dẫn.",
-    price: 220000,
-    status: "low",
-    image_url: "https://images.unsplash.com/photo-1544025162-d76694265947",
-  },
-  {
-    id: 8,
-    name: "Lẩu Hải Sản Chua Cay",
-    category_name: "Rau & Lẩu",
-    description:
-      "Lẩu nóng hổi với rau xanh, nấm tươi và hải sản chua cay tròn vị.",
-    price: 320000,
-    status: "available",
-    image_url: "https://images.unsplash.com/photo-1547592180-85f173990554",
-  },
-  {
-    id: 9,
-    name: "Gỏi Rau Củ Trộn Mè",
-    category_name: "Rau & Lẩu",
-    description:
-      "Rau củ tươi giòn trộn mè rang thanh nhẹ, phù hợp món khai vị.",
-    price: 95000,
-    status: "low",
-    image_url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
-  },
-];
-
-const formatPrice = (value) => `${Number(value).toLocaleString("vi-VN")} đ`;
-
-const inventoryItems = menuItems.map((item) => ({
-  id: item.id,
-  name: item.name,
-  category: item.category_name,
-  description: item.description,
-  price: formatPrice(item.price),
-  status: item.status,
-  image: item.image_url,
-}));
-
-const categories = [
-  "Tất cả",
-  ...new Set(menuItems.map((item) => item.category_name)),
-];
+import { getAllMenuItems } from "../../services/admin.service";
 
 function ChefInventory() {
   const [searchText, setSearchText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [menuItems, setMenuItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filteredFoods = inventoryItems.filter((item) => {
-    const search = searchText.trim().toLowerCase();
-    const matchesSearch =
-      search.length === 0 ||
-      [item.name, item.category, item.description]
-        .join(" ")
-        .toLowerCase()
-        .includes(search);
+  // Fetch all menu items
+  useEffect(() => {
+    const fetchAllItems = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Fetch all menu items
+        const res = await getAllMenuItems();
+        const items = Array.isArray(res.data) ? res.data : [];
 
-    const matchesCategory =
-      selectedCategory === "Tất cả" || item.category === selectedCategory;
-    const matchesStatus =
-      selectedStatus === "all" || item.status === selectedStatus;
+        // Transform items to match InventoryCard structure
+        const transformedItems = items.map((item) => ({
+          ...item,
+          id: item.id,
+          name: item.name,
+          category: item.category_name || "Không xác định",
+          description: item.description || "",
+          price: item.price,
+          image: item.image_url,
+          // Determine status based on is_available
+          status: item.is_available ? "available" : "out",
+          stockText: item.is_available
+            ? `${Number(item.price).toLocaleString("vi-VN")} đ`
+            : "Hết hàng",
+        }));
 
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+        setMenuItems(transformedItems);
+      } catch (err) {
+        console.error("Lỗi fetch menu items:", err);
+        setError(err?.response?.data?.error || "Không thể tải danh sách món");
+        setMenuItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const categoryCounts = categories.reduce((counts, category) => {
-    if (category === "Tất cả") {
-      counts[category] = inventoryItems.length;
+    fetchAllItems();
+  }, []);
+
+  // Generate categories from items
+  const categories = useMemo(() => {
+    const uniqueCategories = new Set(menuItems.map((item) => item.category));
+    return ["Tất cả", ...Array.from(uniqueCategories).sort()];
+  }, [menuItems]);
+
+  const filteredFoods = useMemo(() => {
+    return menuItems.filter((item) => {
+      const search = searchText.trim().toLowerCase();
+      const matchesSearch =
+        search.length === 0 ||
+        [item.name, item.category, item.description]
+          .join(" ")
+          .toLowerCase()
+          .includes(search);
+
+      const matchesCategory =
+        selectedCategory === "Tất cả" || item.category === selectedCategory;
+      const matchesStatus =
+        selectedStatus === "all" || item.status === selectedStatus;
+
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [menuItems, searchText, selectedCategory, selectedStatus]);
+
+  const categoryCounts = useMemo(() => {
+    return categories.reduce((counts, category) => {
+      if (category === "Tất cả") {
+        counts[category] = menuItems.length;
+        return counts;
+      }
+
+      counts[category] = menuItems.filter(
+        (item) => item.category === category,
+      ).length;
       return counts;
-    }
-
-    counts[category] = inventoryItems.filter(
-      (item) => item.category === category,
-    ).length;
-    return counts;
-  }, {});
+    }, {});
+  }, [categories, menuItems]);
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-4 sm:px-6">
       <div className="mx-auto max-w-[1600px]">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="relative w-full max-w-[420px]">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+        {/* Error state */}
+        {error && (
+          <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
-              <input
-                type="text"
-                placeholder="Tìm kiếm món..."
-                value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
-                className="h-11 w-full rounded-full border border-slate-200 bg-white pl-12 pr-5 text-[14px] font-medium text-slate-700 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-start gap-4 text-[13px] font-semibold sm:justify-end">
-              <span className="inline-flex items-center gap-2 text-emerald-700">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                ON - Còn món
-              </span>
-
-              <span className="inline-flex items-center gap-2 text-rose-500">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
-                OFF - Hết món
-              </span>
-
-              <span className="inline-flex items-center gap-2 text-amber-500">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-                LOW - Sắp hết
-              </span>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-600"></div>
+              <p className="text-slate-500">Đang tải danh sách hết món...</p>
             </div>
           </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="relative w-full max-w-[420px]">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
 
-          <div className="flex flex-wrap items-center gap-3">
-            {categories.map((item) => {
-              return (
-                <button
-                  type="button"
-                  key={item}
-                  onClick={() => setSelectedCategory(item)}
-                  className={`h-10 rounded-full border px-5 text-[13px] font-semibold tracking-[0.01em] transition-all ${
-                    selectedCategory === item
-                      ? "border-[#0f5f63] bg-[#0f5f63] text-white shadow-sm"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  {item.toUpperCase()} ({categoryCounts[item]})
-                </button>
-              );
-            })}
-          </div>
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm món..."
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                  className="h-11 w-full rounded-full border border-slate-200 bg-white pl-12 pr-5 text-[14px] font-medium text-slate-700 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
 
-          <div className="flex items-center justify-end text-sm text-slate-500">
-            <button
-              type="button"
-              onClick={() => {
-                setSearchText("");
-                setSelectedCategory("Tất cả");
-                setSelectedStatus("all");
-              }}
-              className="font-semibold text-[#0f5f63] hover:underline"
-            >
-              Xóa bộ lọc
-            </button>
-          </div>
-        </div>
+              <div className="flex flex-wrap items-center justify-start gap-4 text-[13px] font-semibold sm:justify-end">
+                <span className="inline-flex items-center gap-2 text-emerald-700">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                  ON - Còn món
+                </span>
 
-        <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {filteredFoods.length === 0 ? (
-            <div className="col-span-full rounded-[24px] border border-dashed border-slate-300 bg-white py-20 text-center text-slate-400">
-              Không tìm thấy món phù hợp.
+                <span className="inline-flex items-center gap-2 text-rose-500">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                  OFF - Hết món
+                </span>
+
+                <span className="inline-flex items-center gap-2 text-amber-500">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                  LOW - Sắp hết
+                </span>
+              </div>
             </div>
-          ) : (
-            filteredFoods.map((item) => (
-              <InventoryCard key={item.id} item={item} />
-            ))
-          )}
-        </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {categories.map((item) => {
+                return (
+                  <button
+                    type="button"
+                    key={item}
+                    onClick={() => setSelectedCategory(item)}
+                    className={`h-10 rounded-full border px-5 text-[13px] font-semibold tracking-[0.01em] transition-all ${
+                      selectedCategory === item
+                        ? "border-[#0f5f63] bg-[#0f5f63] text-white shadow-sm"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {item.toUpperCase()} ({categoryCounts[item] || 0})
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-end text-sm text-slate-500">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchText("");
+                  setSelectedCategory("Tất cả");
+                  setSelectedStatus("all");
+                }}
+                className="font-semibold text-[#0f5f63] hover:underline"
+              >
+                Xóa bộ lọc
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!loading && (
+          <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {filteredFoods.length === 0 ? (
+              <div className="col-span-full rounded-[24px] border border-dashed border-slate-300 bg-white py-20 text-center text-slate-400">
+                {menuItems.length === 0
+                  ? "Không có menu nào để hiển thị."
+                  : "Không tìm thấy món phù hợp."}
+              </div>
+            ) : (
+              filteredFoods.map((item) => (
+                <InventoryCard key={item.id} item={item} />
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

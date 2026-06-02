@@ -20,6 +20,63 @@ const getMenuForStaff = async () => {
   return { categories, items };
 };
 
+const calculateRemainingPortions = async (menuItemId) => {
+  const rows = await knex("menu_item_ingredients as mii")
+    .leftJoin("inventory as inv", "inv.ingredient_id", "mii.ingredient_id")
+    .where("mii.menu_item_id", menuItemId)
+    .andWhere("mii.is_critical", true)
+    .select("mii.quantity_needed", "inv.current_stock");
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const portions = rows.map((row) => {
+    const stock = row.current_stock === null ? 0 : parseFloat(row.current_stock);
+    const needed = parseFloat(row.quantity_needed) || 1;
+    return Math.floor(stock / needed);
+  });
+
+  return Math.min(...portions);
+};
+
+const getMenuStatusForStaff = async () => {
+  const categories = await knex("menu_categories")
+    .select("id", "name")
+    .orderBy("id", "asc");
+
+  const items = await knex("menu_items as mi")
+    .leftJoin("menu_categories as mc", "mc.id", "mi.category_id")
+    .select("mi.*", "mc.name as category_name")
+    .orderBy("mi.created_at", "desc");
+
+  const enriched = await Promise.all(
+    items.map(async (item) => {
+      const remaining_portions = item.is_available
+        ? await calculateRemainingPortions(item.id)
+        : 0;
+
+      let predicted_status = "available";
+      if (!item.is_available) {
+        predicted_status = "out";
+      } else if (
+        remaining_portions !== null &&
+        remaining_portions <= 3
+      ) {
+        predicted_status = "low";
+      }
+
+      return {
+        ...item,
+        remaining_portions,
+        predicted_status,
+      };
+    }),
+  );
+
+  return { categories, items: enriched };
+};
+
 /**
  * GET /api/staff/tables/:tableId
  * Trả về chi tiết bàn: thông tin bàn, session, danh sách orders + items.
@@ -430,6 +487,49 @@ const getKitchenBoard = async () => {
     ])
     .limit(7);
 
+  const totalServedTodayRow = await knex("order_items as oi")
+    .where("oi.status", "served")
+    .whereRaw("oi.served_at::date = CURRENT_DATE")
+    .select(knex.raw("COALESCE(SUM(oi.quantity), 0)::integer as total"))
+    .first();
+
+  const servingRows = await knex("order_items as oi")
+    .join("orders as o", "o.id", "oi.order_id")
+    .join("sessions as s", "s.id", "o.session_id")
+    .join("tables as t", "t.id", "s.table_id")
+    .join("menu_items as mi", "mi.id", "oi.menu_item_id")
+    .where("oi.status", "serving")
+    .select(
+      "t.id as table_id",
+      "t.name as table_name",
+      "t.code as table_code",
+      "mi.name as menu_item_name",
+    )
+    .select(knex.raw("SUM(oi.quantity)::integer as quantity"))
+    .groupBy("t.id", "t.name", "t.code", "mi.name")
+    .orderBy("t.name", "asc");
+
+  const servingTableStats = [];
+  const servingTableMap = new Map();
+  for (const row of servingRows) {
+    const tableId = row.table_id;
+    const tableName = row.table_name || `Bàn ${row.table_code}`;
+    if (!servingTableMap.has(tableId)) {
+      servingTableMap.set(tableId, {
+        id: tableId,
+        name: tableName,
+        orders: [],
+      });
+    }
+
+    servingTableMap.get(tableId).orders.push({
+      quantity: Number(row.quantity) || 0,
+      name: row.menu_item_name || "Món phục vụ",
+    });
+  }
+
+  servingTableStats.push(...servingTableMap.values());
+
   return {
     pendingOrders: boardOrders.filter((order) => order.status === "pending"),
     cookingOrders: boardOrders.filter((order) => order.status === "cooking"),
@@ -444,6 +544,8 @@ const getKitchenBoard = async () => {
       orderCount: Number(row.order_count) || 0,
       lastOrderAt: row.last_order_at,
     })),
+    totalServedToday: Number(totalServedTodayRow?.total || 0),
+    servingTableStats,
   };
 };
 
