@@ -2,120 +2,120 @@ import { Search } from "lucide-react";
 import { useState } from "react";
 import InventoryCard from "../../components/chef/InventoryCard";
 
+const menuItems = [
+  {
+    id: 1,
+    name: "Cua Biển Luộc Sả Gừng",
+    category_name: "Hải sản",
+    description:
+      "Cua biển tươi ngọt hấp hành sả gừng giữ nguyên độ ngọt tự nhiên từ biển cả.",
+    price: 350000,
+    status: "available",
+    image_url: "https://images.unsplash.com/photo-1559847844-5315695dadae",
+  },
+  {
+    id: 2,
+    name: "Cá Lóc Nướng Trui Miền Tây",
+    category_name: "Hải sản",
+    description:
+      "Cá lóc đồng nướng rơm thơm lừng cuốn bánh tráng chấm mắm nêm đậm vị.",
+    price: 180000,
+    status: "low",
+    image_url: "https://images.unsplash.com/photo-1544025162-d76694265947",
+  },
+  {
+    id: 3,
+    name: "Cá Điều Hồng Chiên Sốt Ớt",
+    category_name: "Hải sản",
+    description: "Cá chiên giòn rưới nước sốt chua ngọt đậm vị truyền thống.",
+    price: 160000,
+    status: "available",
+    image_url: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2",
+  },
+  {
+    id: 4,
+    name: "Bạch Tuộc Sa Tế Xào Cay",
+    category_name: "Hải sản",
+    description:
+      "Bạch tuộc tươi giòn xào lăn với sa tế tỏi ớt thơm nồng cay tê lôi cuốn.",
+    price: 200000,
+    status: "available",
+    image_url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
+  },
+  {
+    id: 5,
+    name: "Nước Ngọt Coca-Cola Lạnh",
+    category_name: "Đồ uống",
+    description:
+      "Nước ngọt có ga sảng khoái mát lạnh tức thì giải ngay hiệu quả.",
+    price: 18000,
+    status: "available",
+    image_url: "https://images.unsplash.com/photo-1629203851122-3726ecdf080e",
+  },
+  {
+    id: 6,
+    name: "Bia Saigon Special Ướp Lạnh",
+    category_name: "Đồ uống",
+    description: "Bia hương vị thượng hạng đậm đà sảng khoái bất tận cuộc vui.",
+    price: 25000,
+    status: "available",
+    image_url: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b",
+  },
+  {
+    id: 7,
+    name: "Ba Chỉ Nướng Muối Ớt",
+    category_name: "Thịt",
+    description:
+      "Thịt ba chỉ nướng vàng ruộm, đậm vị muối ớt cay thơm hấp dẫn.",
+    price: 220000,
+    status: "low",
+    image_url: "https://images.unsplash.com/photo-1544025162-d76694265947",
+  },
+  {
+    id: 8,
+    name: "Lẩu Hải Sản Chua Cay",
+    category_name: "Rau & Lẩu",
+    description:
+      "Lẩu nóng hổi với rau xanh, nấm tươi và hải sản chua cay tròn vị.",
+    price: 320000,
+    status: "available",
+    image_url: "https://images.unsplash.com/photo-1547592180-85f173990554",
+  },
+  {
+    id: 9,
+    name: "Gỏi Rau Củ Trộn Mè",
+    category_name: "Rau & Lẩu",
+    description:
+      "Rau củ tươi giòn trộn mè rang thanh nhẹ, phù hợp món khai vị.",
+    price: 95000,
+    status: "low",
+    image_url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
+  },
+];
+
+const formatPrice = (value) => `${Number(value).toLocaleString("vi-VN")} đ`;
+
+const inventoryItems = menuItems.map((item) => ({
+  id: item.id,
+  name: item.name,
+  category: item.category_name,
+  description: item.description,
+  price: formatPrice(item.price),
+  status: item.status,
+  image: item.image_url,
+}));
+
+const categories = [
+  "Tất cả",
+  ...new Set(menuItems.map((item) => item.category_name)),
+];
+
 function ChefInventory() {
-  const foods = [
-    {
-      id: 1,
-      name: "Cua Biển Luộc Sả Gừng",
-      category: "Hải sản",
-      description:
-        "Cua biển tươi ngọt hấp hành sả gừng giữ nguyên độ ngọt tự nhiên từ biển cả.",
-      price: "350.000 đ",
-      status: "available",
-      image: "https://images.unsplash.com/photo-1559847844-5315695dadae",
-    },
-
-    {
-      id: 2,
-      name: "Cá Lóc Nướng Trui Miền Tây",
-      category: "Hải sản",
-      description:
-        "Cá lóc đồng nướng rơm thơm lừng cuốn bánh tráng chấm mắm nêm đậm vị.",
-      price: "180.000 đ",
-      status: "low",
-      image: "https://images.unsplash.com/photo-1544025162-d76694265947",
-    },
-
-    {
-      id: 3,
-      name: "Cá Điều Hồng Chiên Sốt Ớt",
-      category: "Hải sản",
-      description: "Cá chiên giòn rưới nước sốt chua ngọt đậm vị truyền thống.",
-      price: "160.000 đ",
-      status: "available",
-      image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2",
-    },
-
-    {
-      id: 4,
-      name: "Bạch Tuộc Sa Tế Xào Cay",
-      category: "Hải sản",
-      description:
-        "Bạch tuộc tươi giòn xào lăn với sa tế tỏi ớt thơm nồng cay tê lôi cuốn.",
-      price: "200.000 đ",
-      status: "available",
-      image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
-    },
-
-    {
-      id: 5,
-      name: "Nước Ngọt Coca-Cola Lạnh",
-      category: "Đồ uống",
-      description:
-        "Nước ngọt có ga sảng khoái mát lạnh tức thì giải ngay hiệu quả.",
-      price: "18.000 đ",
-      status: "available",
-      image: "https://images.unsplash.com/photo-1629203851122-3726ecdf080e",
-    },
-
-    {
-      id: 6,
-      name: "Bia Saigon Special Ướp Lạnh",
-      category: "Đồ uống",
-      description:
-        "Bia hương vị thượng hạng đậm đà sảng khoái bất tận cuộc vui.",
-      price: "25.000 đ",
-      status: "available",
-      image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b",
-    },
-
-    {
-      id: 7,
-      name: "Ba Chỉ Nướng Muối Ớt",
-      category: "Thịt",
-      description:
-        "Thịt ba chỉ nướng vàng ruộm, đậm vị muối ớt cay thơm hấp dẫn.",
-      price: "220.000 đ",
-      status: "low",
-      image: "https://images.unsplash.com/photo-1544025162-d76694265947",
-    },
-
-    {
-      id: 8,
-      name: "Lẩu Hải Sản Chua Cay",
-      category: "Rau & Lẩu",
-      description:
-        "Lẩu nóng hổi với rau xanh, nấm tươi và hải sản chua cay tròn vị.",
-      price: "320.000 đ",
-      status: "available",
-      image: "https://images.unsplash.com/photo-1547592180-85f173990554",
-    },
-
-    {
-      id: 9,
-      name: "Gỏi Rau Củ Trộn Mè",
-      category: "Rau & Lẩu",
-      description:
-        "Rau củ tươi giòn trộn mè rang thanh nhẹ, phù hợp món khai vị.",
-      price: "95.000 đ",
-      status: "low",
-      image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
-    },
-  ];
-
-  const categories = ["Tất cả", "Hải sản", "Thịt", "Rau & Lẩu", "Đồ uống"];
-  const stockFilters = [
-    { key: "all", label: "Tất cả" },
-    { key: "available", label: "Còn món" },
-    { key: "low", label: "Sắp hết" },
-    { key: "out", label: "Hết món" },
-  ];
-
   const [searchText, setSearchText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [selectedStatus, setSelectedStatus] = useState("all");
 
-  const filteredFoods = foods.filter((item) => {
+  const filteredFoods = inventoryItems.filter((item) => {
     const search = searchText.trim().toLowerCase();
     const matchesSearch =
       search.length === 0 ||
@@ -134,11 +134,11 @@ function ChefInventory() {
 
   const categoryCounts = categories.reduce((counts, category) => {
     if (category === "Tất cả") {
-      counts[category] = foods.length;
+      counts[category] = inventoryItems.length;
       return counts;
     }
 
-    counts[category] = foods.filter(
+    counts[category] = inventoryItems.filter(
       (item) => item.category === category,
     ).length;
     return counts;

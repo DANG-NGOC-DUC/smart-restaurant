@@ -1,34 +1,9 @@
 import { useEffect, useState } from "react";
-import {
-  Users,
-  Clock,
-  Play,
-  Check,
-  RotateCcw,
-  RefreshCw,
-  Loader2,
-  AlertTriangle,
-} from "lucide-react";
+import { Users, Clock, Play, Check, RotateCcw } from "lucide-react";
 import { useSupabaseRealtime } from "../../hooks/shared/useSupabaseRealtime";
 import * as staffService from "../../services/staff.service";
 
-const DELIVERY_STORAGE_KEY = "chefLatestDelivered";
-const DELIVERED_IDS_KEY = "chefDeliveredOrderIds";
 const KITCHEN_SUBSCRIPTIONS = [{ table: "order_items", event: "*" }];
-
-function getDeliveredOrderIds() {
-  try {
-    const raw = window.localStorage.getItem(DELIVERED_IDS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveDeliveredOrderIds(orderIds) {
-  window.localStorage.setItem(DELIVERED_IDS_KEY, JSON.stringify(orderIds));
-}
 
 function formatElapsed(seconds) {
   const totalSeconds = Math.max(0, Math.floor(seconds || 0));
@@ -81,7 +56,6 @@ function normalizeOrder(order) {
 }
 
 function transformBoard(board) {
-  const deliveredIds = getDeliveredOrderIds();
   const sortByCreatedAt = (left, right) => {
     const leftMs = new Date(left.createdAt).getTime();
     const rightMs = new Date(right.createdAt).getTime();
@@ -95,13 +69,21 @@ function transformBoard(board) {
     ? board.cookingOrders.map(normalizeOrder).sort(sortByCreatedAt)
     : [];
   const completedOrders = Array.isArray(board?.completedOrders)
-    ? board.completedOrders
-        .map(normalizeOrder)
-        .filter((order) => !deliveredIds.includes(order.id))
-        .sort(sortByCreatedAt)
+    ? board.completedOrders.map(normalizeOrder).sort(sortByCreatedAt)
     : [];
 
-  return { pendingOrders, cookingOrders, completedOrders };
+  const batching = Array.isArray(board?.batching)
+    ? board.batching.map((item) => ({
+        id: item.id,
+        name: item.name,
+        image: item.image || null,
+        qty: Number(item.qty || 0),
+        orderCount: Number(item.orderCount || 0),
+        lastOrderAt: item.lastOrderAt || null,
+      }))
+    : [];
+
+  return { pendingOrders, cookingOrders, completedOrders, batching };
 }
 
 function OrderCard({
@@ -231,6 +213,7 @@ function ChefDashboard() {
     pendingOrders: [],
     cookingOrders: [],
     completedOrders: [],
+    batching: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -275,6 +258,30 @@ function ChefDashboard() {
 
     return () => window.clearTimeout(timeout);
   }, [notification]);
+
+  useEffect(() => {
+    let timeoutId;
+
+    const scheduleMidnightRefresh = () => {
+      const nowTime = new Date();
+      const nextMidnight = new Date(nowTime);
+      nextMidnight.setDate(nextMidnight.getDate() + 1);
+      nextMidnight.setHours(0, 0, 2, 0);
+
+      timeoutId = window.setTimeout(() => {
+        fetchBoard();
+        scheduleMidnightRefresh();
+      }, nextMidnight.getTime() - nowTime.getTime());
+    };
+
+    scheduleMidnightRefresh();
+
+    return () => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
 
   const showNotification = (message) => {
     setNotification(message);
@@ -354,115 +361,30 @@ function ChefDashboard() {
     }
   };
 
-  const handleDeliver = (order) => {
-    (async () => {
-      try {
-        await markOrderItems(order, "serving");
+  const handleDeliver = async (order) => {
+    try {
+      await markOrderItems(order, "serving");
 
-        // Keep localStorage dispatch for immediate local notification (same-tab)
-        try {
-          const quantity = getOrderQuantity(order);
-          const now = new Date();
-          const hh = String(now.getHours()).padStart(2, "0");
-          const mm = String(now.getMinutes()).padStart(2, "0");
-          const time = `${hh}:${mm}`;
-          const date = now.toISOString().slice(0, 10);
+      setBoard((prev) => ({
+        ...prev,
+        completedOrders: prev.completedOrders.filter(
+          (item) => item.id !== order.id,
+        ),
+      }));
 
-          const entry = {
-            orderId: order.id,
-            table: order.table,
-            quantity,
-            time,
-            date,
-            items: order.items.map((item) => ({
-              qty: item.qty,
-              name: item.name,
-            })),
-          };
-
-          window.localStorage.setItem(
-            DELIVERY_STORAGE_KEY,
-            JSON.stringify(entry),
-          );
-          const deliveredOrderIds = getDeliveredOrderIds();
-          if (!deliveredOrderIds.includes(order.id)) {
-            deliveredOrderIds.push(order.id);
-            saveDeliveredOrderIds(deliveredOrderIds);
-          }
-
-          window.dispatchEvent(
-            new CustomEvent("latestDeliveredUpdated", { detail: entry }),
-          );
-        } catch {
-          // ignore local notification failures
-        }
-
-        setBoard((prev) => ({
-          ...prev,
-          completedOrders: prev.completedOrders.filter(
-            (item) => item.id !== order.id,
-          ),
-        }));
-        showNotification(`Đã bàn giao ${order.table} cho phục vụ.`);
-        await fetchBoard();
-      } catch (err) {
-        setError(
-          err.response?.data?.error ||
-            err.message ||
-            "Không thể ghi nhận bàn giao",
-        );
-      }
-    })();
+      showNotification(`Đã bàn giao ${order.table} cho phục vụ.`);
+      await fetchBoard();
+    } catch (err) {
+      setError(
+        err.response?.data?.error ||
+          err.message ||
+          "Không thể ghi nhận bàn giao",
+      );
+    }
   };
-
-  const batching = [
-    {
-      name: "Hàu nướng mỡ hành",
-      qty: 12,
-      image: "https://images.unsplash.com/photo-1559847844-5315695dadae",
-    },
-    {
-      name: "Tôm nướng muối ớt",
-      qty: 8,
-      image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38",
-    },
-    {
-      name: "Sò điệp nướng phô mai",
-      qty: 6,
-      image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
-    },
-    {
-      name: "Ốc hương xào bơ tỏi",
-      qty: 5,
-      image: "https://images.unsplash.com/photo-1513104890138-7c749659a591",
-    },
-    {
-      name: "Lẩu thái hải sản",
-      qty: 3,
-      image: "https://images.unsplash.com/photo-1547592180-85f173990554",
-    },
-    {
-      name: "Mực nướng sa tế",
-      qty: 1,
-      image: "https://images.unsplash.com/photo-1523978591478-c753949ff840",
-    },
-    {
-      name: "Cá nướng giấy bạc",
-      qty: 2,
-      image: "https://images.unsplash.com/photo-1514516681008-5f1f4d6f6f28",
-    },
-  ];
 
   return (
     <div className="p-4">
-      {(loading || error) && (
-        <div
-          className={`mb-4 rounded-2xl border px-4 py-3 text-sm font-medium ${error ? "border-red-200 bg-red-50 text-red-700" : "border-slate-200 bg-white text-slate-600"}`}
-        >
-          {error || "Đang tải dữ liệu bếp..."}
-        </div>
-      )}
-
       <div className="grid xl:grid-cols-4 gap-4">
         <div className="bg-slate-100 rounded-2xl p-4 min-h-[524px] max-h-[524px] flex flex-col">
           <div className="flex justify-center gap-2 mb-4">
@@ -582,23 +504,53 @@ function ChefDashboard() {
             TỔNG HỢP MÓN (BATCHING)
           </h2>
 
-          <div className="space-y-4">
-            {batching.map((dish, index) => (
-              <div key={index} className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={dish.image}
-                    alt={dish.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  <span>{dish.name}</span>
-                </div>
-
-                <span className="font-bold text-slate-800">
-                  {dish.qty} phần
-                </span>
+          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+            {board.batching.length === 0 ? (
+              <div className="flex items-center justify-center h-[420px]">
+                <p className="text-slate-400 text-sm font-medium">
+                  Hôm nay chưa có món nào
+                </p>
               </div>
-            ))}
+            ) : (
+              board.batching.map((dish) => (
+                <div
+                  key={dish.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                      {dish.image ? (
+                        <img
+                          src={dish.image}
+                          alt={dish.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-[10px] text-slate-300">
+                          No img
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="font-semibold text-slate-800 text-sm truncate">
+                        {dish.name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {dish.orderCount} đơn hôm nay
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <div className="text-lg font-extrabold text-slate-800 leading-none">
+                      {dish.qty}
+                    </div>
+                    <div className="text-xs text-slate-500">phần</div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

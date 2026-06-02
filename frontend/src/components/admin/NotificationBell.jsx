@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useRef } from "react";
 import { Bell, Star } from "lucide-react";
 import { supabase } from "../../lib/supabase";

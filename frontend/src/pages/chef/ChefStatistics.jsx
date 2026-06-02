@@ -1,92 +1,66 @@
 import TopDishCard from "../../components/chef/TopDishCard";
 import TableStatisticsCard from "../../components/chef/TableStatisticsCard";
 import { useEffect, useState } from "react";
+import * as adminService from "../../services/admin.service";
 
 const DELIVERY_STORAGE_KEY = "chefLatestDelivered";
 
 function ChefStatistics() {
-  const topDishes = [
-    {
-      id: 1,
-      name: "Hàu nướng mỡ hành",
-      quantity: 125,
-      image: "https://images.unsplash.com/photo-1559847844-5315695dadae",
-    },
-
-    {
-      id: 2,
-      name: "Tôm nướng muối ớt",
-      quantity: 86,
-      image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38",
-    },
-
-    {
-      id: 3,
-      name: "Lẩu thái hải sản",
-      quantity: 42,
-      image: "https://images.unsplash.com/photo-1547592180-85f173990554",
-    },
-
-    {
-      id: 4,
-      name: "Sò điệp nướng phô mai",
-      quantity: 35,
-      image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
-    },
-
-    {
-      id: 5,
-      name: "Ốc hương xào bơ tỏi",
-      quantity: 28,
-      image: "https://images.unsplash.com/photo-1513104890138-7c749659a591",
-    },
-  ];
-
-  const tableGroups = [
-    [
-      {
-        id: 1,
-        name: "BÀN 01",
-        orders: ["2 Hàu nướng mỡ hành", "1 Ốc hương xào bơ tỏi"],
-      },
-
-      {
-        id: 2,
-        name: "BÀN 02",
-        orders: ["2 Sò lông nướng mỡ hành"],
-      },
-    ],
-
-    [
-      {
-        id: 5,
-        name: "BÀN 05",
-        orders: ["2 Hàu nướng phô mai", "1 Tôm sú nướng"],
-      },
-
-      {
-        id: 6,
-        name: "BÀN 06",
-        orders: ["1 Mực nướng sa tế"],
-      },
-    ],
-
-    [
-      {
-        id: 9,
-        name: "BÀN 09",
-        orders: ["1 Cá nướng giấy bạc", "1 Bia Tiger"],
-      },
-
-      {
-        id: 10,
-        name: "BÀN 10",
-        orders: ["1 Sò điệp nướng phô mai"],
-      },
-    ],
-  ];
-
+  const [topDishes, setTopDishes] = useState([]);
+  const [tableGroups, setTableGroups] = useState([]);
   const [latestDelivered, setLatestDelivered] = useState(null);
+
+  const fetchStatistics = async () => {
+    try {
+      setLoading(true);
+
+      const [topDishesRes, recentOrdersRes] = await Promise.all([
+        adminService.getDashboardTopDishes(),
+        adminService.getDashboardRecentOrders(),
+      ]);
+
+      setTopDishes(
+        Array.isArray(topDishesRes.data)
+          ? topDishesRes.data.map((dish) => ({
+              id: dish.id,
+              name: dish.name,
+              quantity: dish.sold ?? dish.quantity ?? 0,
+              image: dish.image || null,
+            }))
+          : [],
+      );
+
+      const groupedOrders = Array.isArray(recentOrdersRes.data)
+        ? recentOrdersRes.data.reduce((groups, order, index) => {
+            const groupIndex = Math.floor(index / 2);
+            if (!groups[groupIndex]) {
+              groups[groupIndex] = [];
+            }
+
+            groups[groupIndex].push({
+              id: order.id,
+              name: order.tableName || "N/A",
+              orders: [
+                {
+                  quantity: order.itemCount || 0,
+                  name:
+                    order.status === "completed"
+                      ? "đơn hoàn thành"
+                      : order.status === "pending"
+                        ? "đơn chờ duyệt"
+                        : "đơn đang xử lý",
+                },
+              ],
+            });
+            return groups;
+          }, [])
+        : [];
+
+      setTableGroups(groupedOrders.slice(0, 3));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadLatestDelivered = () => {
     try {
@@ -104,6 +78,8 @@ function ChefStatistics() {
   };
 
   useEffect(() => {
+    fetchStatistics();
+
     const load = () => {
       const entry = loadLatestDelivered();
       if (!entry) return setLatestDelivered(null);
@@ -155,7 +131,13 @@ function ChefStatistics() {
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <span>Tổng món đã phục vụ:</span>
 
-            <span className="text-slate-800 font-bold">312 suất</span>
+            <span className="text-slate-800 font-bold">
+              {topDishes.reduce(
+                (sum, dish) => sum + Number(dish.quantity || 0),
+                0,
+              )}{" "}
+              suất
+            </span>
           </div>
         </div>
 
@@ -205,11 +187,17 @@ function ChefStatistics() {
           CHI TIẾT PHỤC VỤ GỌI MÓN THEO TỪNG BÀN
         </h2>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {tableGroups.map((group, index) => (
-            <TableStatisticsCard key={index} tables={group} />
-          ))}
-        </div>
+        {tableGroups.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            Hôm nay chưa có đơn gần đây để thống kê theo bàn.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            {tableGroups.map((group, index) => (
+              <TableStatisticsCard key={index} tables={group} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

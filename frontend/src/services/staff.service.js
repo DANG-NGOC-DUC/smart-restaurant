@@ -43,14 +43,10 @@ export const getServingItems = () => {
   return api.get("/staff/serving-items");
 };
 
-// Lấy dữ liệu bảng bếp (GET /api/staff/kitchen-board) 
+// Lấy dữ liệu bảng bếp (GET /api/staff/kitchen-board)
 export const getKitchenBoard = () => {
   return api.get("/staff/kitchen-board");
 };
-
-// Alias cũ để tránh gãy các màn hình đã dùng tên cũ
-export const getKitchenItems = getPendingItems;
-export const getReadyItems = getPendingItems;
 
 // ==================== DUYỆT ĐƠN ====================
 
@@ -89,9 +85,6 @@ export const markItemServing = (itemId) => {
   return api.patch(`/staff/order-items/${itemId}/serving`);
 };
 
-// Alias cũ
-export const markItemCooked = markItemReady;
-
 // Bếp hoàn tác món đang nấu về chờ nấu (PATCH /api/staff/order-items/:itemId/revert-pending)
 export const revertItemToPreparing = (itemId) => {
   return api.patch(`/staff/order-items/${itemId}/revert-pending`);
@@ -104,7 +97,7 @@ export const revertItemToCooking = (itemId) => {
 
 // Đánh dấu đã lên món (PATCH /api/staff/order-items/:itemId/serve)
 export const markItemServed = (itemId) => {
-  return api.patch(`/staff/order-items/${itemId}/serve`); 
+  return api.patch(`/staff/order-items/${itemId}/serve`);
 };
 
 // Phục vụ xác nhận đã nhận từ bếp (PATCH /api/staff/order-items/:itemId/confirm-receive)

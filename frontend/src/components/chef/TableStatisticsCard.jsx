@@ -1,3 +1,4 @@
+// Thống kê món đã phục vụ theo bàn
 function TableStatisticsCard({ tables }) {
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
@@ -28,8 +29,14 @@ function TableStatisticsCard({ tables }) {
           {/* Món */}
           <div className="px-5 py-4">
             {table.orders.map((item, index) => {
-              const quantity = item.split(" ")[0];
-              const name = item.substring(quantity.length + 1);
+              const quantity =
+                typeof item === "object"
+                  ? String(item.quantity ?? 0)
+                  : item.split(" ")[0];
+              const name =
+                typeof item === "object"
+                  ? item.name
+                  : item.substring(quantity.length + 1);
 
               return (
                 <div

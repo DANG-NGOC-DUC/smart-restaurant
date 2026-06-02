@@ -410,12 +410,40 @@ const getKitchenBoard = async () => {
     .map(toBoardOrder)
     .sort(sortByCreatedAt);
 
+  const batchingRows = await knex("order_items as oi")
+    .join("orders as o", "o.id", "oi.order_id")
+    .join("menu_items as mi", "mi.id", "oi.menu_item_id")
+    .whereRaw("oi.created_at::date = CURRENT_DATE")
+    .whereNotIn("oi.status", ["cancelled"])
+    .select(
+      "mi.id as menu_item_id",
+      "mi.name as name",
+      "mi.image_url as image_url",
+    )
+    .select(knex.raw("SUM(oi.quantity)::integer as qty"))
+    .select(knex.raw("COUNT(DISTINCT o.id)::integer as order_count"))
+    .select(knex.raw("MAX(oi.created_at) as last_order_at"))
+    .groupBy("mi.id", "mi.name", "mi.image_url")
+    .orderBy([
+      { column: "qty", order: "desc" },
+      { column: "last_order_at", order: "desc" },
+    ])
+    .limit(7);
+
   return {
     pendingOrders: boardOrders.filter((order) => order.status === "pending"),
     cookingOrders: boardOrders.filter((order) => order.status === "cooking"),
     completedOrders: boardOrders.filter(
       (order) => order.status === "completed",
     ),
+    batching: batchingRows.map((row) => ({
+      id: row.menu_item_id,
+      name: row.name,
+      image: row.image_url,
+      qty: Number(row.qty) || 0,
+      orderCount: Number(row.order_count) || 0,
+      lastOrderAt: row.last_order_at,
+    })),
   };
 };
 

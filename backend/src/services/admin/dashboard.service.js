@@ -167,16 +167,18 @@ const getTopDishes = async () => {
     .select(
       "menu_items.id",
       "menu_items.name",
+      "menu_items.image_url",
       knex.raw("SUM(order_items.quantity) as sold"),
       knex.raw("SUM(order_items.price * order_items.quantity) as revenue"),
     )
-    .groupBy("menu_items.id", "menu_items.name")
+    .groupBy("menu_items.id", "menu_items.name", "menu_items.image_url")
     .orderBy("sold", "desc")
     .limit(5);
 
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
+    image: r.image_url,
     sold: parseInt(r.sold) || 0,
     revenue: parseFloat(r.revenue) || 0,
   }));

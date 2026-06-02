@@ -10,7 +10,7 @@ const SYSTEM_PROMPT =
   "confidence nằm trong khoảng 0-1.";
 
 const buildUserPrompt = (text) =>
-  `Phân tích đoạn sau và trả về JSON theo schema đã nêu:\n${text}`;
+  zz`Phân tích đoạn sau và trả về JSON theo schema đã nêu:\n${text}`;
 
 const normalizeText = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -30,7 +30,7 @@ const parseNumber = (value) => {
 const UNIT_ALIASES = {
   kg: ["kg", "kilo", "kilogram", "kí", "ky", "cân", "can"],
   g: ["g", "gram", "gam"],
-  "lít": ["l", "lit", "lít"],
+  lít: ["l", "lit", "lít"],
   ml: ["ml", "milliliter", "mililiter"],
   chai: ["chai", "bottle"],
   hộp: ["hộp", "hop", "box"],
@@ -160,8 +160,7 @@ export const parseIngredientsFromText = async (text) => {
   const normalizedItems = items
     .map(normalizeItem)
     .filter(
-      (item) =>
-        item.name || item.unit || item.quantity !== null || item.note,
+      (item) => item.name || item.unit || item.quantity !== null || item.note,
     );
 
   return {

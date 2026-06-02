@@ -1,3 +1,4 @@
+//Top 5 món bán chạy
 function TopDishCard({ dish }) {
   return (
     <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 hover:shadow-md transition">

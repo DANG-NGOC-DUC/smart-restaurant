@@ -1,3 +1,4 @@
+// Thẻ hiển thị thông tin món ăn trong kho
 function InventoryCard({ item }) {
   const statusConfig = {
     available: {
@@ -31,11 +32,17 @@ function InventoryCard({ item }) {
     <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
       {/* IMAGE */}
       <div className="relative p-3 pb-0">
-        <img
-          src={item.image}
-          alt={item.name}
-          className="h-[220px] w-full rounded-[18px] object-cover"
-        />
+        {item.image ? (
+          <img
+            src={item.image}
+            alt={item.name}
+            className="h-[220px] w-full rounded-[18px] object-cover"
+          />
+        ) : (
+          <div className="flex h-[220px] w-full items-center justify-center rounded-[18px] bg-slate-100 text-slate-400 text-sm font-semibold">
+            Không có ảnh
+          </div>
+        )}
 
         <div className="pointer-events-none absolute inset-x-3 bottom-0 h-16 rounded-b-[18px] bg-gradient-to-t from-slate-900/15 to-transparent"></div>
 
@@ -66,10 +73,12 @@ function InventoryCard({ item }) {
 
         {/* PRICE */}
         <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-3">
-          <p className="text-[17px] font-bold text-rose-500">{item.price}</p>
+          <p className="text-[17px] font-bold text-rose-500">
+            {item.stockText || item.price}
+          </p>
 
           <span className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-300">
-            Đổi nhanh:
+            Tồn kho:
           </span>
         </div>
 
