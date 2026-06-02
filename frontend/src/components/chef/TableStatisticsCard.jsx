@@ -4,11 +4,11 @@ function TableStatisticsCard({ tables }) {
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
       {/* Header */}
       <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50">
-        <div className="px-5 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">
           Mã bàn
         </div>
 
-        <div className="px-5 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">
           Món đã phục vụ
         </div>
       </div>
@@ -20,14 +20,14 @@ function TableStatisticsCard({ tables }) {
           className="grid grid-cols-2 border-b border-slate-100 last:border-0"
         >
           {/* Bàn */}
-          <div className="flex items-start px-5 py-5">
-            <span className="px-4 py-2 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-800 font-bold text-xs tracking-wide">
+          <div className="flex items-start px-4 py-3">
+            <span className="px-3 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-800 font-semibold text-xs tracking-wide">
               {table.name}
             </span>
           </div>
 
           {/* Món */}
-          <div className="px-5 py-4">
+          <div className="px-4 py-3">
             {table.orders.map((item, index) => {
               const quantity =
                 typeof item === "object"
@@ -41,15 +41,15 @@ function TableStatisticsCard({ tables }) {
               return (
                 <div
                   key={index}
-                  className="flex items-start gap-2 mb-2 last:mb-0"
+                  className="flex items-start gap-2 mb-1.5 last:mb-0"
                 >
                   {/* Badge số lượng */}
-                  <span className="text-rose-400 text-sm font-semibold min-w-[14px]">
+                  <span className="text-rose-400 text-xs font-semibold min-w-[14px]">
                     {quantity}
                   </span>
 
                   {/* Tên món */}
-                  <span className="text-slate-600 text-sm leading-6">
+                  <span className="text-slate-600 text-xs leading-5">
                     {name}
                   </span>
                 </div>

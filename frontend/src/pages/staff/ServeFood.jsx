@@ -277,15 +277,15 @@ function ServeFood() {
                       className="flex items-center gap-1.5 px-3 py-2 bg-sea-600 text-white text-xs font-semibold rounded-lg hover:bg-sea-700 active:scale-95 transition-all"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>Xác nhận nhận món</span>
+                      <span>Xác nhận món</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => handleServe(item.id)}
                       className="flex items-center gap-1.5 px-3 py-2 bg-sea-600 text-white text-xs font-semibold rounded-lg hover:bg-sea-700 active:scale-95 transition-all"
+                      aria-label="Đánh dấu đã lên"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>Đã lên</span>
                     </button>
                   )}
                 </div>
