@@ -38,6 +38,11 @@ export const getPendingItems = () => {
   return api.get("/staff/pending-items");
 };
 
+// Lấy danh sách món đã nấu xong (GET /api/staff/pending-items)
+export const getReadyItems = () => {
+  return api.get("/staff/pending-items");
+};
+
 // Lấy danh sách món đang chờ phục vụ (GET /api/staff/serving-items)
 export const getServingItems = () => {
   return api.get("/staff/serving-items");

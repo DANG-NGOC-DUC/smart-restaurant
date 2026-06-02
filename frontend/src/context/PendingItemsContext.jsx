@@ -26,7 +26,7 @@ export function PendingItemsProvider({ children }) {
         staffService.getServingItems(),
       ]);
 
-      // Hiển thị các món đang chờ phục vụ (serving) trước, rồi đến món cooked
+      // Hiển thị các món đang chờ phục vụ (serving) trước, rồi món cooked
       const serving = Array.isArray(servingRes?.data) ? servingRes.data : [];
       const ready = Array.isArray(readyRes?.data) ? readyRes.data : [];
       setItems([...serving, ...ready]);
@@ -59,7 +59,7 @@ export function PendingItemsProvider({ children }) {
   const confirmReceive = async (itemId) => {
     try {
       await staffService.confirmReceive(itemId);
-      setItems((prev) => prev.filter((i) => i.id !== itemId));
+      setItems((prev) => prev.filter((item) => item.id !== itemId));
     } catch (err) {
       throw new Error(
         err.response?.data?.error || "Không thể xác nhận nhận món",

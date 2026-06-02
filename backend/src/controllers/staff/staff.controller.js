@@ -243,7 +243,7 @@ const getServingItems = async (req, res, next) => {
 
 /**
  * PATCH /api/staff/order-items/:itemId/confirm-receive
- * Nhân viên xác nhận đã nhận món từ bếp (serving → delivering)
+ * Nhân viên xác nhận đã nhận món từ bếp (serving → served)
  */
 const confirmReceiveFromKitchen = async (req, res, next) => {
   try {

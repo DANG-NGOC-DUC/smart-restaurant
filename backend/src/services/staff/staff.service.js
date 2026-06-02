@@ -571,7 +571,7 @@ const markItemServing = async (itemId) => {
 };
 
 /**
- * Nhân viên xác nhận đã nhận từ bếp (serving → delivering)
+ * Nhân viên xác nhận đã nhận từ bếp (serving → served)
  */
 const confirmReceiveFromKitchen = async (itemId, staffId = null) => {
   const item = await knex("order_items").where({ id: itemId }).first();
@@ -587,9 +587,9 @@ const confirmReceiveFromKitchen = async (itemId, staffId = null) => {
   const [updated] = await knex("order_items")
     .where({ id: itemId, status: "serving" })
     .update({
-      status: "delivering",
-      delivered_by: staffId,
-      delivering_at: knex.fn.now(),
+      status: "served",
+      served_by: staffId,
+      served_at: knex.fn.now(),
     })
     .returning("*");
 

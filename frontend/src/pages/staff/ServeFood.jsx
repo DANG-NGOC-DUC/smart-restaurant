@@ -56,6 +56,14 @@ function ServeFood() {
     }
   };
 
+  const handleConfirmReceive = async (itemId) => {
+    try {
+      await confirmReceive(itemId);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const openCancelDialog = (itemId, itemName) => {
     setCancelTarget({ id: itemId, name: itemName });
     setSelectedReason("");
@@ -102,10 +110,12 @@ function ServeFood() {
     const onStorage = (event) => {
       if (event?.key && event.key !== DELIVERY_STORAGE_KEY) return;
       syncFromStorage();
+      fetchItems();
     };
 
     const onCustom = (event) => {
       applyEntry(event?.detail);
+      fetchItems();
     };
 
     window.addEventListener("storage", onStorage);
@@ -263,7 +273,7 @@ function ServeFood() {
                   </button>
                   {item.status === "serving" ? (
                     <button
-                      onClick={() => confirmReceive(item.id)}
+                      onClick={() => handleConfirmReceive(item.id)}
                       className="flex items-center gap-1.5 px-3 py-2 bg-sea-600 text-white text-xs font-semibold rounded-lg hover:bg-sea-700 active:scale-95 transition-all"
                     >
                       <Check className="w-3.5 h-3.5" />

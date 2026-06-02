@@ -4,6 +4,7 @@ import { useSupabaseRealtime } from "../../hooks/shared/useSupabaseRealtime";
 import * as staffService from "../../services/staff.service";
 
 const KITCHEN_SUBSCRIPTIONS = [{ table: "order_items", event: "*" }];
+const DELIVERY_STORAGE_KEY = "chefLatestDelivered";
 
 function formatElapsed(seconds) {
   const totalSeconds = Math.max(0, Math.floor(seconds || 0));
@@ -36,6 +37,17 @@ function getOrderQuantity(order) {
   return Array.isArray(order.items)
     ? order.items.reduce((sum, item) => sum + Number(item.qty || 0), 0)
     : 0;
+}
+
+function saveDeliveryNotification(entry) {
+  try {
+    window.localStorage.setItem(DELIVERY_STORAGE_KEY, JSON.stringify(entry));
+    window.dispatchEvent(
+      new CustomEvent("latestDeliveredUpdated", { detail: entry }),
+    );
+  } catch {
+    // Ignore storage errors.
+  }
 }
 
 function normalizeOrder(order) {
@@ -372,6 +384,19 @@ function ChefDashboard() {
         ),
       }));
 
+      const deliveredEntry = {
+        id: `${order.id}-${Date.now()}`,
+        table: order.table,
+        quantity: getOrderQuantity(order),
+        time: new Date().toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        date: new Date().toISOString().slice(0, 10),
+      };
+
+      saveDeliveryNotification(deliveredEntry);
       showNotification(`Đã bàn giao ${order.table} cho phục vụ.`);
       await fetchBoard();
     } catch (err) {

@@ -121,7 +121,7 @@ router.patch(
   staffController.markItemServing,
 );
 
-// PATCH /api/staff/order-items/:itemId/confirm-receive  — Phục vụ xác nhận nhận từ bếp (serving → delivering)
+// PATCH /api/staff/order-items/:itemId/confirm-receive  — Phục vụ xác nhận nhận từ bếp (serving → served)
 router.patch(
   "/order-items/:itemId/confirm-receive",
   auth,
