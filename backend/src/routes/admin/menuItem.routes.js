@@ -37,7 +37,7 @@ router.post(
 router.put(
   "/:id",
   auth,
-  allowRoles("admin", "chef"),
+  allowRoles("admin"),
   upload.single("image"),
   menuItemController.updateMenuItem,
 );

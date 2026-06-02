@@ -38,11 +38,18 @@ export function useAdminMenuItems(initialFilters = {}) {
     fetchItems(filters);
   }, [fetchItems, filters]);
 
+  const dispatchMenuUpdated = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("menuUpdated"));
+    }
+  };
+
   const handleCreate = async (formData) => {
     setError(null);
     try {
       const res = await createMenuItem(formData);
       await fetchItems(filters);
+      dispatchMenuUpdated();
       return res.data;
     } catch (err) {
       const msg = err?.response?.data?.error || err.message;
@@ -56,6 +63,7 @@ export function useAdminMenuItems(initialFilters = {}) {
     try {
       const res = await updateMenuItem(id, formData);
       await fetchItems(filters);
+      dispatchMenuUpdated();
       return res.data;
     } catch (err) {
       const msg = err?.response?.data?.error || err.message;
@@ -69,6 +77,7 @@ export function useAdminMenuItems(initialFilters = {}) {
     try {
       await deleteMenuItem(id);
       setItems((prev) => prev.filter((item) => item.id !== id));
+      dispatchMenuUpdated();
       return true;
     } catch (err) {
       const msg = err?.response?.data?.error || err.message;

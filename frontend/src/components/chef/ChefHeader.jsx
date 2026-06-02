@@ -1,6 +1,7 @@
 import { ChefHat } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import logo from "../../assets/logo.png";
+import NotificationBell from "../admin/NotificationBell";
 
 function ChefHeader() {
   const { user } = useAuth();
@@ -25,12 +26,17 @@ function ChefHeader() {
         </div>
       </div>
 
-      {/* Thông tin bếp */}
-      <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full border border-white/10">
-        <ChefHat className="w-4 h-4" />
-        <span className="text-sm font-medium truncate max-w-[140px]">
-          {displayName}
-        </span>
+      <div className="flex items-center gap-3">
+        {/* Thông báo */}
+        <NotificationBell showReviews={false} title="Thông báo bếp" />
+
+        {/* Thông tin bếp */}
+        <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full border border-white/10">
+          <ChefHat className="w-4 h-4" />
+          <span className="text-sm font-medium truncate max-w-[140px]">
+            {displayName}
+          </span>
+        </div>
       </div>
     </header>
   );

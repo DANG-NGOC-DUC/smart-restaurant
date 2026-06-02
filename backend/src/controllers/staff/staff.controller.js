@@ -13,15 +13,6 @@ const getMenu = async (req, res, next) => {
   }
 };
 
-const getMenuStatus = async (req, res, next) => {
-  try {
-    const menu = await staffService.getMenuStatusForStaff();
-    res.status(200).json(menu);
-  } catch (error) {
-    next(error);
-  }
-};
-
 /**
  * GET /api/staff/tables
  * Lấy sơ đồ bàn kèm trạng thái + tổng tiền session
@@ -520,7 +511,6 @@ export const staffController = {
   getTables,
   getTableDetail,
   getMenu,
-  getMenuStatus,
   getPendingItems,
   getKitchenBoard,
   getPendingOrders,

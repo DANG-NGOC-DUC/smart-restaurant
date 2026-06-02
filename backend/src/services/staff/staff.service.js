@@ -20,63 +20,6 @@ const getMenuForStaff = async () => {
   return { categories, items };
 };
 
-const calculateRemainingPortions = async (menuItemId) => {
-  const rows = await knex("menu_item_ingredients as mii")
-    .leftJoin("inventory as inv", "inv.ingredient_id", "mii.ingredient_id")
-    .where("mii.menu_item_id", menuItemId)
-    .andWhere("mii.is_critical", true)
-    .select("mii.quantity_needed", "inv.current_stock");
-
-  if (rows.length === 0) {
-    return null;
-  }
-
-  const portions = rows.map((row) => {
-    const stock = row.current_stock === null ? 0 : parseFloat(row.current_stock);
-    const needed = parseFloat(row.quantity_needed) || 1;
-    return Math.floor(stock / needed);
-  });
-
-  return Math.min(...portions);
-};
-
-const getMenuStatusForStaff = async () => {
-  const categories = await knex("menu_categories")
-    .select("id", "name")
-    .orderBy("id", "asc");
-
-  const items = await knex("menu_items as mi")
-    .leftJoin("menu_categories as mc", "mc.id", "mi.category_id")
-    .select("mi.*", "mc.name as category_name")
-    .orderBy("mi.created_at", "desc");
-
-  const enriched = await Promise.all(
-    items.map(async (item) => {
-      const remaining_portions = item.is_available
-        ? await calculateRemainingPortions(item.id)
-        : 0;
-
-      let predicted_status = "available";
-      if (!item.is_available) {
-        predicted_status = "out";
-      } else if (
-        remaining_portions !== null &&
-        remaining_portions <= 3
-      ) {
-        predicted_status = "low";
-      }
-
-      return {
-        ...item,
-        remaining_portions,
-        predicted_status,
-      };
-    }),
-  );
-
-  return { categories, items: enriched };
-};
-
 /**
  * GET /api/staff/tables/:tableId
  * Trả về chi tiết bàn: thông tin bàn, session, danh sách orders + items.

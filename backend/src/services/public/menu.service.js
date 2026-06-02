@@ -29,14 +29,28 @@ const enrichItem = async (item) => {
   return { ...item, variants, is_in_stock };
 };
 
+// Filter items based on status and availability
+// Show items with status "available" or "low", hide "out_of_stock" items
+const shouldShowItem = (item) => {
+  if (!item.is_available) return false;
+  // If status field exists, filter by it. If not, fall back to is_available check
+  if (item.status) {
+    return item.status !== "out";
+  }
+  return true;
+};
+
 const getPublicMenu = async (filters = {}) => {
-  // Chỉ lấy món đang available
+  // Get all menu items with is_available=true
   const menuItems = await MenuItemModel.findAll({
     ...filters,
     is_available: true,
   });
 
-  return Promise.all(menuItems.map(enrichItem));
+  // Filter by status (show available and low, hide out)
+  const filteredItems = menuItems.filter(shouldShowItem);
+
+  return Promise.all(filteredItems.map(enrichItem));
 };
 
 const getMenuGroupedByCategory = async () => {
@@ -50,7 +64,9 @@ const getMenuGroupedByCategory = async () => {
       is_available: true,
     });
 
-    const itemsEnriched = await Promise.all(items.map(enrichItem));
+    // Filter by status
+    const filteredItems = items.filter(shouldShowItem);
+    const itemsEnriched = await Promise.all(filteredItems.map(enrichItem));
 
     if (itemsEnriched.length > 0) {
       result.push({
@@ -69,6 +85,11 @@ const getMenuItemDetail = async (id) => {
 
   if (!item || !item.is_available) {
     throw new Error("Món ăn không tồn tại hoặc đang ngừng bán.");
+  }
+
+  // Check status - don't show out of stock items
+  if (!shouldShowItem(item)) {
+    throw new Error("Món ăn đã hết hoặc không khả dụng.");
   }
 
   // Gắn variants

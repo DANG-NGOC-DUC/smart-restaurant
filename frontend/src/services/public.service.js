@@ -34,4 +34,10 @@ export const publicService = {
 
   // Profile (guest)
   updateProfile: (data) => api.patch("/public/profile", data),
+
+  // Subscribe to menu item status changes (realtime)
+  subscribeMenuItemStatusChanges: (callback) => {
+    // This will be implemented via Supabase realtime in ChefInventory component
+    return callback;
+  },
 };

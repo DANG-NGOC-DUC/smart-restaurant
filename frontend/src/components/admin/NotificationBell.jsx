@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Bell, Star } from "lucide-react";
+import { Bell, Star, AlertCircle } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { getLatestReviews } from "../../services/admin.service";
 
@@ -17,14 +17,19 @@ const formatTimeAgo = (dateStr) => {
   return `${diffDay} ngày trước`;
 };
 
-export default function NotificationBell() {
+export default function NotificationBell({
+  showReviews = true,
+  title = "Thông báo mới",
+}) {
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [latestReviews, setLatestReviews] = useState([]);
+  const [statusChanges, setStatusChanges] = useState([]);
   const dropdownRef = useRef(null);
 
   // Fetch 3 latest reviews for the dropdown
   const fetchLatest = async () => {
+    if (!showReviews) return;
     try {
       const { data } = await getLatestReviews();
       if (data) setLatestReviews(data);
@@ -36,24 +41,43 @@ export default function NotificationBell() {
   useEffect(() => {
     fetchLatest();
 
-    // Subscribe to realtime INSERT on reviews
-    const channel = supabase
-      .channel("reviews-realtime")
+    let reviewChannel;
+    if (showReviews) {
+      reviewChannel = supabase
+        .channel("reviews-realtime")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "reviews" },
+          (payload) => {
+            setCount((prev) => prev + 1);
+            setLatestReviews((prev) => [payload.new, ...prev].slice(0, 3));
+          },
+        )
+        .subscribe();
+    }
+
+    const statusChannel = supabase
+      .channel("menu-status-changes")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "reviews" },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "service_requests",
+          filter: "request_type=eq.menu_status_change",
+        },
         (payload) => {
           setCount((prev) => prev + 1);
-          // Prepend new review and keep only 3
-          setLatestReviews((prev) => [payload.new, ...prev].slice(0, 3));
+          setStatusChanges((prev) => [payload.new, ...prev].slice(0, 3));
         },
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (reviewChannel) supabase.removeChannel(reviewChannel);
+      supabase.removeChannel(statusChannel);
     };
-  }, []);
+  }, [showReviews]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -74,6 +98,11 @@ export default function NotificationBell() {
     }
   };
 
+  const allNotifications = [
+    ...statusChanges.map((s) => ({ ...s, type: "status" })),
+    ...latestReviews.map((r) => ({ ...r, type: "review" })),
+  ].slice(0, 5); // Show top 5 notifications
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -91,53 +120,74 @@ export default function NotificationBell() {
       {open && (
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-card-hover border border-sea-100 z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-sea-100 bg-sea-50">
-            <h3 className="text-sm font-semibold text-sea-800">
-              Đánh giá mới nhất
-            </h3>
+            <h3 className="text-sm font-semibold text-sea-800">{title}</h3>
           </div>
 
-          {latestReviews.length === 0 ? (
+          {allNotifications.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-sea-400">
-              Chưa có đánh giá nào
+              Không có thông báo nào
             </div>
           ) : (
             <ul className="divide-y divide-sea-50 max-h-72 overflow-y-auto">
-              {latestReviews.map((review) => (
+              {allNotifications.map((notif) => (
                 <li
-                  key={review.id}
+                  key={notif.id}
                   className={`px-4 py-3 hover:bg-sea-50/50 transition-colors ${
-                    review.rating < 3 ? "border-l-2 border-l-crimson-500" : ""
+                    notif.type === "status"
+                      ? "border-l-2 border-l-amber-500"
+                      : notif.rating < 3
+                        ? "border-l-2 border-l-crimson-500"
+                        : ""
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm text-sea-800">
-                      {review.user_full_name || "Ẩn danh"}
-                    </span>
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <Star
-                          key={i}
-                          className={`w-3 h-3 ${
-                            i <= review.rating
-                              ? "fill-gold-500 text-gold-500"
-                              : "fill-none text-gray-300"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <p
-                    className={`text-xs line-clamp-2 ${
-                      review.rating < 3
-                        ? "text-crimson-600 font-medium"
-                        : "text-sea-500"
-                    }`}
-                  >
-                    {review.comment || "Không có bình luận"}
-                  </p>
-                  <span className="text-[10px] text-sea-400 mt-1 block">
-                    {formatTimeAgo(review.created_at)}
-                  </span>
+                  {notif.type === "status" ? (
+                    <>
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <span className="font-medium text-sm text-sea-800">
+                          Thay đổi trạng thái menu
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-600 font-medium">
+                        {notif.note}
+                      </p>
+                      <span className="text-[10px] text-sea-400 mt-1 block">
+                        {formatTimeAgo(notif.created_at)}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm text-sea-800">
+                          {notif.user_full_name || "Ẩn danh"}
+                        </span>
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <Star
+                              key={i}
+                              className={`w-3 h-3 ${
+                                i <= notif.rating
+                                  ? "fill-gold-500 text-gold-500"
+                                  : "fill-none text-gray-300"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <p
+                        className={`text-xs line-clamp-2 ${
+                          notif.rating < 3
+                            ? "text-crimson-600 font-medium"
+                            : "text-sea-500"
+                        }`}
+                      >
+                        {notif.comment || "Không có bình luận"}
+                      </p>
+                      <span className="text-[10px] text-sea-400 mt-1 block">
+                        {formatTimeAgo(notif.created_at)}
+                      </span>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
@@ -148,7 +198,7 @@ export default function NotificationBell() {
               href="/admin/reviews"
               className="text-xs font-medium text-sea-600 hover:text-sea-800 transition-colors"
             >
-              Xem tất cả đánh giá →
+              Xem tất cả →
             </a>
           </div>
         </div>

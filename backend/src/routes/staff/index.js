@@ -22,11 +22,7 @@ router.get(
 // GET /api/staff/menu  — danh mục + món còn phục vụ
 router.get("/menu", auth, allowRoles("staff"), staffController.getMenu);
 
-// GET /api/staff/menu-status — danh sách món + trạng thái dự đoán cho bếp
-router.get("/menu-status", auth, allowRoles("staff", "chef"), staffController.getMenuStatus);
-
 // ===== Món chờ phục vụ =====
-
 // GET /api/staff/pending-items
 router.get(
   "/pending-items",

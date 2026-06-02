@@ -4,6 +4,8 @@ import {
   uploadImageToSupabase,
   deleteImageFromSupabase,
 } from "../../utils/upload.util.js";
+import knex from "../../db/knex.js";
+import crypto from "crypto";
 
 const getAllMenuItems = async (filters) => {
   return MenuItemModel.findAll(filters);
@@ -87,10 +89,46 @@ const updateMenuItem = async (id, data, file) => {
     updateData.description = data.description?.trim() || null;
   }
 
+  // Handle status update (admin can set any status, chef can only set specific statuses)
+  if (data.status !== undefined) {
+    const validStatuses = ["available", "low", "out"];
+    if (!validStatuses.includes(data.status)) {
+      throw new Error(
+        "Trạng thái không hợp lệ. Phải là: available, low, hoặc out.",
+      );
+    }
+    
+    // Only create notification if status actually changed
+    if (menuItem.status !== data.status) {
+      updateData.status = data.status;
+
+      // Create admin notification about status change
+      // Store as service_request with special type for menu status changes
+      try {
+        await knex("service_requests").insert({
+          id: crypto.randomUUID(),
+          table_id: null, // No specific table for menu status changes
+          session_id: null,
+          request_type: "menu_status_change",
+          status: "pending",
+          note: `Món "${menuItem.name}" - Trạng thái thay đổi: ${getStatusLabel(
+            data.status,
+          )}`,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
+      } catch (err) {
+        console.error("Error creating status change notification:", err);
+        // Don't fail the update if notification creation fails
+      }
+    }
+  }
+
+  // Handle is_available (legacy support for admin)
   if (data.is_available !== undefined) {
     updateData.is_available =
       data.is_available === "true" || data.is_available === true;
-    updateData.auto_locked = false;
+    // Note: Not setting status here, keep them separate
   }
 
   // Upload ảnh mới nếu có
@@ -161,4 +199,14 @@ export const menuItemService = {
   deleteMenuItem,
   uploadMenuItemImage,
   deleteMenuItemImage,
+};
+
+// Helper function to get Vietnamese status label
+const getStatusLabel = (status) => {
+  const labels = {
+    available: "Còn hàng",
+    low: "Sắp hết",
+    out: "Hết hàng",
+  };
+  return labels[status] || status;
 };
