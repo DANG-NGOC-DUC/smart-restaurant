@@ -12,10 +12,12 @@ dotenv.config();
 
 const app = express();
 
+const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+
 // CORS - cho phép frontend gọi API
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: frontendUrl,
     credentials: true,
   }),
 );
