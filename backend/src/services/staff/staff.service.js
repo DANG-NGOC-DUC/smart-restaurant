@@ -299,6 +299,7 @@ const getPendingItems = async () => {
       "t.name as table_name",
       "t.code as table_code",
       "o.id as order_id",
+      "s.id as session_id",
     )
     .select(
       knex.raw(
@@ -317,6 +318,7 @@ const getPendingItems = async () => {
     table_name: row.table_name || `Bàn ${row.table_code}`,
     table_code: row.table_code,
     order_id: row.order_id,
+    session_id: row.session_id,
     created_at: row.created_at,
     waiting_minutes: Math.round(parseFloat(row.waiting_minutes) || 0),
   }));
@@ -347,6 +349,7 @@ const getKitchenBoard = async () => {
       "t.name as table_name",
       "t.code as table_code",
       "o.created_at as order_created_at",
+      "s.id as session_id",
     )
     .orderBy("o.created_at", "asc")
     .orderBy("oi.created_at", "asc");
@@ -354,9 +357,10 @@ const getKitchenBoard = async () => {
   const orderMap = new Map();
 
   for (const row of rows) {
-    if (!orderMap.has(row.order_id)) {
-      orderMap.set(row.order_id, {
-        id: row.order_id,
+    const sessionKey = row.session_id || row.order_id;
+    if (!orderMap.has(sessionKey)) {
+      orderMap.set(sessionKey, {
+        id: sessionKey,
         table: row.table_name || `Bàn ${row.table_code}`,
         createdAt: row.order_created_at,
         noteSet: new Set(),
@@ -364,7 +368,16 @@ const getKitchenBoard = async () => {
       });
     }
 
-    const order = orderMap.get(row.order_id);
+    const order = orderMap.get(sessionKey);
+    if (row.order_created_at) {
+      const currentCreatedAt = new Date(order.createdAt).getTime();
+      const nextCreatedAt = new Date(row.order_created_at).getTime();
+      if (!Number.isNaN(nextCreatedAt)) {
+        order.createdAt = Number.isNaN(currentCreatedAt)
+          ? row.order_created_at
+          : new Date(Math.min(currentCreatedAt, nextCreatedAt)).toISOString();
+      }
+    }
     if (row.note) {
       order.noteSet.add(row.note);
     }
@@ -373,6 +386,7 @@ const getKitchenBoard = async () => {
       qty: row.quantity,
       name: row.menu_item_name,
       status: row.status,
+      note: row.note,
     });
   }
 
@@ -402,6 +416,8 @@ const getKitchenBoard = async () => {
         id: item.id,
         qty: item.qty,
         name: item.name,
+        status: item.status,
+        note: item.note,
       })),
     };
   };
@@ -427,8 +443,7 @@ const getKitchenBoard = async () => {
     .orderBy([
       { column: "qty", order: "desc" },
       { column: "last_order_at", order: "desc" },
-    ])
-    .limit(7);
+    ]);
 
   const totalServedTodayRow = await knex("order_items as oi")
     .where("oi.status", "served")
@@ -693,6 +708,7 @@ const getServingItems = async () => {
       "t.name as table_name",
       "t.code as table_code",
       "o.id as order_id",
+      "s.id as session_id",
     )
     .select(
       knex.raw(
@@ -711,6 +727,7 @@ const getServingItems = async () => {
     table_name: row.table_name || `Bàn ${row.table_code}`,
     table_code: row.table_code,
     order_id: row.order_id,
+    session_id: row.session_id,
     created_at: row.created_at,
     waiting_minutes: Math.round(parseFloat(row.waiting_minutes) || 0),
   }));
@@ -1138,6 +1155,142 @@ const resolveRequest = async (requestId, staffId) => {
   return updated[0];
 };
 
+/**
+ * GET /api/staff/kitchen-stats
+ * Trả về 4 chỉ số tổng quan trong ngày cho trang thống kê bếp.
+ */
+const getKitchenStats = async () => {
+  const [servedRow, cancelledRow, ordersRow, avgRow] = await Promise.all([
+    // Tổng suất đã phục vụ hôm nay
+    knex("order_items as oi")
+      .where("oi.status", "served")
+      .whereRaw("oi.served_at::date = CURRENT_DATE")
+      .select(knex.raw("COALESCE(SUM(oi.quantity), 0)::integer as total"))
+      .first(),
+
+    // Tổng suất đã hủy hôm nay
+    knex("order_items as oi")
+      .where("oi.status", "cancelled")
+      .whereRaw("oi.cancelled_at::date = CURRENT_DATE")
+      .select(knex.raw("COALESCE(SUM(oi.quantity), 0)::integer as total"))
+      .first(),
+
+    // Tổng đơn hàng hôm nay (không tính cancelled)
+    knex("orders")
+      .whereRaw("created_at::date = CURRENT_DATE")
+      .whereNot({ status: "cancelled" })
+      .count("id as total")
+      .first(),
+
+    // Thời gian nấu trung bình (created_at → served_at) cho món served hôm nay
+    knex("order_items as oi")
+      .where("oi.status", "served")
+      .whereRaw("oi.served_at::date = CURRENT_DATE")
+      .whereNotNull("oi.served_at")
+      .select(
+        knex.raw(
+          "ROUND(AVG(EXTRACT(EPOCH FROM (oi.served_at - oi.created_at)) / 60))::integer as avg_minutes",
+        ),
+      )
+      .first(),
+  ]);
+
+  return {
+    totalServedToday: Number(servedRow?.total || 0),
+    totalCancelledToday: Number(cancelledRow?.total || 0),
+    totalOrdersToday: Number(ordersRow?.total || 0),
+    avgCookingTimeMinutes: Number(avgRow?.avg_minutes || 0),
+  };
+};
+
+/**
+ * GET /api/staff/kitchen-history
+ * Trả về lịch sử món chi tiết, có phân trang và lọc.
+ *
+ * @param {Object} filters
+ * @param {number} filters.page - Trang hiện tại (mặc định 1)
+ * @param {number} filters.limit - Số item/trang (mặc định 20)
+ * @param {string} filters.status - Lọc theo trạng thái ("served", "cancelled", hoặc để trống = tất cả)
+ * @param {string} filters.date - Lọc theo ngày (YYYY-MM-DD, mặc định hôm nay)
+ */
+const getKitchenHistory = async (filters = {}) => {
+  const page = Math.max(1, parseInt(filters.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(filters.limit, 10) || 20));
+  const offset = (page - 1) * limit;
+  const status = filters.status || null;
+  const date = filters.date || new Date().toISOString().slice(0, 10);
+
+  let baseQuery = knex("order_items as oi")
+    .join("orders as o", "o.id", "oi.order_id")
+    .join("sessions as s", "s.id", "o.session_id")
+    .join("tables as t", "t.id", "s.table_id")
+    .join("menu_items as mi", "mi.id", "oi.menu_item_id")
+    .whereRaw("oi.created_at::date = ?", [date]);
+
+  if (status) {
+    baseQuery = baseQuery.where("oi.status", status);
+  } else {
+    // Chỉ hiển thị món đã hoàn thành hoặc đã hủy
+    baseQuery = baseQuery.whereIn("oi.status", ["served", "cancelled"]);
+  }
+
+  // Đếm tổng số record
+  const countResult = await baseQuery
+    .clone()
+    .clearSelect()
+    .clearOrder()
+    .count("oi.id as total")
+    .first();
+  const total = Number(countResult?.total || 0);
+
+  // Lấy data trang hiện tại
+  const items = await baseQuery
+    .clone()
+    .select(
+      "oi.id",
+      "oi.quantity",
+      "oi.note",
+      "oi.status",
+      "oi.price",
+      "oi.created_at",
+      "oi.served_at",
+      "oi.cancelled_at",
+      "oi.cancel_reason",
+      "oi.variant_label",
+      "mi.name as menu_item_name",
+      "mi.image_url",
+      "t.name as table_name",
+      "t.code as table_code",
+    )
+    .orderBy("oi.created_at", "desc")
+    .limit(limit)
+    .offset(offset);
+
+  return {
+    items: items.map((row) => ({
+      id: row.id,
+      menu_item_name: row.menu_item_name,
+      image_url: row.image_url,
+      quantity: row.quantity,
+      price: row.price,
+      note: row.note,
+      status: row.status,
+      variant_label: row.variant_label,
+      table_name: row.table_name || `Bàn ${row.table_code}`,
+      created_at: row.created_at,
+      served_at: row.served_at,
+      cancelled_at: row.cancelled_at,
+      cancel_reason: row.cancel_reason,
+    })),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
 export const staffService = {
   getTablesForStaff,
   getTableDetail,
@@ -1162,4 +1315,6 @@ export const staffService = {
   acknowledgeRequest,
   resolveRequest,
   getServiceRequests,
+  getKitchenStats,
+  getKitchenHistory,
 };

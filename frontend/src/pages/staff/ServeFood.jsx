@@ -179,15 +179,21 @@ function ServeFood() {
     );
   }
 
-  // Gom items theo bàn
-  const groupedByTable = items.reduce((acc, item) => {
-    const key = item.table_name;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
+  // Gom items theo bàn và phiên
+  const groupedByTableAndSession = items.reduce((acc, item) => {
+    const key = `${item.table_name}_${item.session_id}`;
+    if (!acc[key]) {
+      acc[key] = {
+        tableName: item.table_name,
+        sessionId: item.session_id,
+        items: []
+      };
+    }
+    acc[key].items.push(item);
     return acc;
   }, {});
 
-  const tableGroups = Object.entries(groupedByTable);
+  const tableGroups = Object.values(groupedByTableAndSession);
 
   return (
     <div className="p-4 space-y-4">
@@ -210,7 +216,7 @@ function ServeFood() {
       {/* Header summary */}
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-sm font-semibold text-slate-700">
-          {items.length} món chờ phục vụ · {tableGroups.length} bàn
+          {items.length} món chờ phục vụ · {tableGroups.length} nhóm bàn
         </h2>
         <button
           onClick={fetchItems}
@@ -220,10 +226,10 @@ function ServeFood() {
         </button>
       </div>
 
-      {/* Items grouped by table */}
-      {tableGroups.map(([tableName, tableItems]) => (
+      {/* Items grouped by table and session */}
+      {tableGroups.map(({ tableName, sessionId, items: tableItems }) => (
         <div
-          key={tableName}
+          key={`${tableName}_${sessionId}`}
           className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
         >
           {/* Table header */}
@@ -232,6 +238,11 @@ function ServeFood() {
             <span className="font-semibold text-sm text-slate-900">
               {tableName}
             </span>
+            {sessionId && (
+              <span className="text-xs font-medium text-slate-500 bg-white/60 px-2 py-0.5 rounded-md border border-slate-200">
+                Phiên {sessionId.substring(0, 4).toUpperCase()}
+              </span>
+            )}
             <span className="text-xs text-slate-400 ml-auto">
               {tableItems.length} món
             </span>

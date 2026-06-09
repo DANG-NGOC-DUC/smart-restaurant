@@ -92,6 +92,9 @@ const parseAiIngredients = async (req, res, next) => {
     if (error.message.includes("GEMINI_API_KEY")) {
       return res.status(500).json({ error: error.message });
     }
+    if (error.statusCode === 503 || error.message.includes("quá tải")) {
+      return res.status(503).json({ error: error.message });
+    }
     if (error.message.includes("Nội dung nhập liệu")) {
       return res.status(400).json({ error: error.message });
     }

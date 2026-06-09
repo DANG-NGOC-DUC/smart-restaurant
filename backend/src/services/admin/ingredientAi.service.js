@@ -1,6 +1,12 @@
 const GEMINI_API_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/models";
 
+const DEFAULT_GEMINI_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+];
+
 const SYSTEM_PROMPT =
   "Bạn là bộ phân tích nhập nguyên liệu. " +
   "Chỉ trả về JSON thuần, không markdown, không giải thích. " +
@@ -10,10 +16,99 @@ const SYSTEM_PROMPT =
   "confidence nằm trong khoảng 0-1.";
 
 const buildUserPrompt = (text) =>
-  zz`Phân tích đoạn sau và trả về JSON theo schema đã nêu:\n${text}`;
+  `Phân tích đoạn sau và trả về JSON theo schema đã nêu:\n${text}`;
 
 const normalizeText = (value) =>
   typeof value === "string" ? value.trim() : "";
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getCandidateModels = () => {
+  const primaryModel = normalizeText(process.env.GEMINI_MODEL);
+  const fallbackModels = normalizeText(process.env.GEMINI_MODEL_FALLBACKS)
+    .split(",")
+    .map((model) => normalizeText(model))
+    .filter(Boolean);
+
+  return [
+    ...new Set([
+      primaryModel || DEFAULT_GEMINI_MODELS[0],
+      ...fallbackModels,
+      ...DEFAULT_GEMINI_MODELS,
+    ]),
+  ];
+};
+
+const isTransientGeminiError = (error) => {
+  const message = normalizeText(error?.message).toLowerCase();
+  const statusCode = Number(error?.statusCode || error?.status || 0);
+
+  if ([429, 500, 503].includes(statusCode)) {
+    return true;
+  }
+
+  return (
+    message.includes("high demand") ||
+    message.includes("spikes in demand") ||
+    message.includes("please try again later") ||
+    message.includes("temporarily unavailable") ||
+    message.includes("resource exhausted") ||
+    message.includes("overloaded") ||
+    message.includes("quota")
+  );
+};
+
+const callGemini = async (model, text) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Thiếu GEMINI_API_KEY trong môi trường.");
+  }
+
+  const url = `${GEMINI_API_BASE_URL}/${model}:generateContent?key=${apiKey}`;
+
+  if (typeof fetch !== "function") {
+    throw new Error("Fetch API không sẵn sàng. Vui lòng dùng Node 18+.");
+  }
+
+  const payload = {
+    systemInstruction: {
+      parts: [{ text: SYSTEM_PROMPT }],
+    },
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: buildUserPrompt(text) }],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.2,
+      topP: 0.9,
+      maxOutputTokens: 1024,
+      responseMimeType: "application/json",
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || "Gọi Gemini thất bại.");
+    error.statusCode = response.status;
+    error.retryable = isTransientGeminiError(error);
+    throw error;
+  }
+
+  return {
+    rawText:
+      data?.candidates?.[0]?.content?.parts
+        ?.map((part) => part.text || "")
+        .join("") || "",
+  };
+};
 
 const parseNumber = (value) => {
   if (value === null || value === undefined) return null;
@@ -104,67 +199,53 @@ export const parseIngredientsFromText = async (text) => {
     throw new Error("Nội dung nhập liệu đang trống.");
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("Thiếu GEMINI_API_KEY trong môi trường.");
+  let lastError = null;
+
+  for (const model of getCandidateModels()) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const { rawText } = await callGemini(model, text);
+        const parsed = extractJson(rawText);
+        const items = Array.isArray(parsed) ? parsed : parsed?.items;
+
+        if (!Array.isArray(items)) {
+          throw new Error("Gemini trả về dữ liệu không hợp lệ.");
+        }
+
+        const normalizedItems = items
+          .map(normalizeItem)
+          .filter(
+            (item) =>
+              item.name || item.unit || item.quantity !== null || item.note,
+          );
+
+        return {
+          model,
+          items: normalizedItems,
+        };
+      } catch (error) {
+        lastError = error;
+        const shouldRetry = error?.retryable && attempt < 3;
+        if (!shouldRetry) {
+          break;
+        }
+
+        await delay(250 * attempt);
+      }
+    }
+
+    if (!isTransientGeminiError(lastError)) {
+      break;
+    }
   }
 
-  const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-  const url = `${GEMINI_API_BASE_URL}/${model}:generateContent?key=${apiKey}`;
-
-  if (typeof fetch !== "function") {
-    throw new Error("Fetch API không sẵn sàng. Vui lòng dùng Node 18+.");
-  }
-
-  const payload = {
-    systemInstruction: {
-      parts: [{ text: SYSTEM_PROMPT }],
-    },
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: buildUserPrompt(text) }],
-      },
-    ],
-    generationConfig: {
-      temperature: 0.2,
-      topP: 0.9,
-      maxOutputTokens: 1024,
-      responseMimeType: "application/json",
-    },
-  };
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data?.error?.message || "Gọi Gemini thất bại.");
-  }
-
-  const rawText =
-    data?.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text || "")
-      .join("") || "";
-
-  const parsed = extractJson(rawText);
-  const items = Array.isArray(parsed) ? parsed : parsed?.items;
-
-  if (!Array.isArray(items)) {
-    throw new Error("Gemini trả về dữ liệu không hợp lệ.");
-  }
-
-  const normalizedItems = items
-    .map(normalizeItem)
-    .filter(
-      (item) => item.name || item.unit || item.quantity !== null || item.note,
+  if (isTransientGeminiError(lastError)) {
+    const error = new Error(
+      "Gemini đang quá tải. Vui lòng thử lại sau vài giây.",
     );
+    error.statusCode = 503;
+    throw error;
+  }
 
-  return {
-    model,
-    items: normalizedItems,
-  };
+  throw lastError || new Error("Gọi Gemini thất bại.");
 };

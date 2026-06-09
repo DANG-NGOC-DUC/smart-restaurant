@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
-import { Users, Clock, Play, Check, RotateCcw } from "lucide-react";
+import { Users, Clock, Play, Check, RotateCcw, X } from "lucide-react";
 import { useSupabaseRealtime } from "../../hooks/shared/useSupabaseRealtime";
 import * as staffService from "../../services/staff.service";
 
 const KITCHEN_SUBSCRIPTIONS = [{ table: "order_items", event: "*" }];
 const DELIVERY_STORAGE_KEY = "chefLatestDelivered";
+const CANCEL_REASONS = [
+  "Khách đổi ý",
+  "Món có vấn đề",
+  "Hết nguyên liệu",
+  "Đặt nhầm",
+  "Chờ quá lâu",
+];
 
 function formatElapsed(seconds) {
   const totalSeconds = Math.max(0, Math.floor(seconds || 0));
@@ -22,21 +29,6 @@ function getElapsedSeconds(createdAt, now) {
 
 function getOrderTimer(order, now) {
   return formatElapsed(getElapsedSeconds(order.createdAt, now));
-}
-
-function getItemIds(order) {
-  if (Array.isArray(order.itemIds) && order.itemIds.length > 0) {
-    return order.itemIds;
-  }
-  return Array.isArray(order.items)
-    ? order.items.map((item) => item.id).filter(Boolean)
-    : [];
-}
-
-function getOrderQuantity(order) {
-  return Array.isArray(order.items)
-    ? order.items.reduce((sum, item) => sum + Number(item.qty || 0), 0)
-    : 0;
 }
 
 function saveDeliveryNotification(entry) {
@@ -59,10 +51,12 @@ function normalizeOrder(order) {
     itemIds: order.item_ids || order.itemIds || [],
     items: Array.isArray(order.items)
       ? order.items.map((item) => ({
-          id: item.id,
-          qty: item.qty ?? item.quantity ?? 0,
-          name: item.name ?? item.menu_item_name ?? "",
-        }))
+        id: item.id,
+        qty: item.qty ?? item.quantity ?? 0,
+        name: item.name ?? item.menu_item_name ?? "",
+        note: item.note ?? item.item_note ?? null,
+        status: item.status ?? item.item_status ?? null,
+      }))
       : [],
   };
 }
@@ -86,135 +80,203 @@ function transformBoard(board) {
 
   const batching = Array.isArray(board?.batching)
     ? board.batching.map((item) => ({
-        id: item.id,
-        name: item.name,
-        image: item.image || null,
-        qty: Number(item.qty || 0),
-        orderCount: Number(item.orderCount || 0),
-        lastOrderAt: item.lastOrderAt || null,
-      }))
+      id: item.id,
+      name: item.name,
+      image: item.image || null,
+      qty: Number(item.qty || 0),
+      orderCount: Number(item.orderCount || 0),
+      lastOrderAt: item.lastOrderAt || null,
+    }))
     : [];
 
   return { pendingOrders, cookingOrders, completedOrders, batching };
+}
+
+function OrderItem({
+  item,
+  status,
+  onCancel,
+  onStart,
+  onUndo,
+  onComplete,
+  onDeliver,
+}) {
+  const itemStatus = item.status || status;
+  const actionButtonBase =
+    "w-8 h-8 rounded-lg border flex items-center justify-center transition-colors";
+
+  const renderActions = () => {
+    if (itemStatus === "preparing") {
+      return (
+        <>
+          <button
+            className={`${actionButtonBase} border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-600`}
+            aria-label="Hủy món"
+            onClick={() => onCancel?.(item)}
+          >
+            <X size={14} />
+          </button>
+          <button
+            className={`${actionButtonBase} border-emerald-200 text-emerald-600 hover:border-emerald-300 hover:text-emerald-700`}
+            aria-label="Bắt đầu nấu"
+            onClick={() => onStart?.(item)}
+          >
+            <Play size={14} />
+          </button>
+        </>
+      );
+    }
+
+    if (itemStatus === "cooking") {
+      return (
+        <>
+          <button
+            className={`${actionButtonBase} border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-600`}
+            aria-label="Hoàn tác"
+            onClick={() => onUndo?.(item, "cooking")}
+          >
+            <RotateCcw size={14} />
+          </button>
+          <button
+            className={`${actionButtonBase} border-emerald-200 text-emerald-600 hover:border-emerald-300 hover:text-emerald-700`}
+            aria-label="Hoàn thành"
+            onClick={() => onComplete?.(item)}
+          >
+            <Check size={14} />
+          </button>
+        </>
+      );
+    }
+
+    if (itemStatus === "cooked") {
+      return (
+        <>
+          <button
+            className={`${actionButtonBase} border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-600`}
+            aria-label="Hoàn tác"
+            onClick={() => onUndo?.(item, "cooked")}
+          >
+            <RotateCcw size={14} />
+          </button>
+          <button
+            className={`${actionButtonBase} border-emerald-200 text-emerald-600 hover:border-emerald-300 hover:text-emerald-700`}
+            aria-label="Giao món"
+            onClick={() => onDeliver?.(item)}
+          >
+            <Check size={14} />
+          </button>
+        </>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="py-2 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="w-7 text-[12px] text-slate-500 font-semibold">
+            {String(item.qty).padStart(2, "0")}
+          </span>
+          <span className="text-sm font-semibold text-slate-900 truncate">
+            {item.name}
+          </span>
+        </div>
+        {item.note && (
+          <div className="mt-1 flex items-start gap-1 text-sm text-slate-500 italic">
+            <span className="text-slate-400">📝</span>
+            <span className="break-words">{item.note}</span>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {renderActions()}
+      </div>
+    </div>
+  );
 }
 
 function OrderCard({
   order,
   status,
   now,
-  onStart,
-  onComplete,
-  onDeliver,
-  onUndo,
+  onItemCancel,
+  onItemStart,
+  onItemComplete,
+  onItemDeliver,
+  onItemUndo,
+  onStartAll,
 }) {
-  const timerColor =
-    status === "pending"
-      ? "text-blue-600"
-      : status === "cooking"
-        ? "text-orange-500"
-        : "text-green-600";
+  const items = Array.isArray(order?.items)
+    ? order.items.filter((item) => item && item.name)
+    : [];
+
+  if (items.length === 0) return null;
+
+  const totalItems = items.reduce(
+    (sum, item) => sum + Number(item.qty || 0),
+    0,
+  );
+  const orderTime = new Date(order.createdAt).toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const hasStartable = items.some(
+    (item) => (item.status || status) === "preparing",
+  );
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 h-[205px] flex flex-col justify-between overflow-hidden">
-      <div className="flex items-center justify-between mb-1.5">
-        <h3 className="font-extrabold text-[17px] text-slate-800 tracking-tight">
-          {order.table}
-        </h3>
-
-        <span className={`text-[13px] font-bold ${timerColor}`}>
-          {getOrderTimer(order, now)}
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-semibold text-slate-900">{order.table}</h3>
+        <span className="text-sm font-semibold text-slate-500">
+          {orderTime}
         </span>
       </div>
 
-      <div className="text-sm text-slate-700 mb-1.5">
-        <div className="space-y-1.5 max-h-24 overflow-y-auto pr-0.5">
-          {order.items.map((item, index) => (
-            <div key={item.id || index} className="flex items-start gap-2">
-              <div className="w-6 text-slate-500 text-[13px] pt-0.5 shrink-0">
-                {String(item.qty).padStart(2, "0")}
-              </div>
-              <div className="flex-1 text-[13px] leading-5">{item.name}</div>
-            </div>
-          ))}
-        </div>
+      <div className="divide-y divide-slate-100">
+        {items.map((item) => (
+          <OrderItem
+            key={item.id}
+            item={item}
+            status={status}
+            onCancel={onItemCancel}
+            onStart={(target) => onItemStart?.(order, target)}
+            onUndo={(target, from) => onItemUndo?.(order, target, from)}
+            onComplete={(target) => onItemComplete?.(order, target)}
+            onDeliver={(target) => onItemDeliver?.(order, target)}
+          />
+        ))}
       </div>
 
       {order.note && (
-        <div className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 font-semibold mb-1.5 self-start">
+        <div className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 font-semibold mt-3">
           {order.note}
         </div>
       )}
 
-      <div className="mt-1.5 mt-auto">
-        <div className="flex items-center justify-between text-[11px] text-slate-500 mb-2">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1">
-              <Users size={13} />
-              <span>{getOrderQuantity(order)} món</span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <Clock size={13} />
-              <span>
-                {new Date(order.createdAt).toLocaleTimeString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </div>
+      <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <Users size={12} />
+            <span>{totalItems} món</span>
           </div>
-
-          <div className="opacity-70" />
+          <div className="flex items-center gap-1">
+            <Clock size={12} />
+            <span>{getOrderTimer(order, now)}</span>
+          </div>
         </div>
-
-        {status === "pending" && (
-          <button
-            className="w-full h-9 rounded-xl border border-blue-200 bg-white/80 text-blue-600 font-medium flex items-center justify-center gap-2 text-[13px] shadow-sm transition-all duration-150 hover:bg-blue-50 hover:border-blue-300 hover:shadow-md"
-            onClick={() => onStart(order)}
-          >
-            <Play size={14} />
-            Bắt đầu
-          </button>
-        )}
-
-        {status === "cooking" && (
-          <div className="flex items-center gap-2.5">
-            <button
-              className="flex-1 h-9 rounded-xl border border-orange-200 bg-white/80 text-orange-500 text-[13px] flex items-center justify-center min-w-0 shadow-sm transition-all duration-150 hover:bg-orange-50 hover:border-orange-300 hover:shadow-md"
-              onClick={() => onUndo(order, "cooking")}
-            >
-              <RotateCcw size={13} className="inline mr-1.5" />
-              Hoàn tác
-            </button>
-
-            <button
-              className="flex-1 h-9 rounded-xl bg-green-600 text-white text-[13px] flex items-center justify-center min-w-0 shadow-sm transition-all duration-150 hover:bg-green-500 hover:shadow-md"
-              onClick={() => onComplete(order)}
-            >
-              <Check size={13} className="inline mr-1.5" />
-              Hoàn thành
-            </button>
-          </div>
-        )}
-
-        {status === "completed" && (
-          <div className="flex items-center gap-2.5">
-            <button
-              className="flex-1 h-9 rounded-xl border border-orange-200 bg-white/80 text-orange-500 text-[13px] flex items-center justify-center min-w-0 shadow-sm transition-all duration-150 hover:bg-orange-50 hover:border-orange-300 hover:shadow-md"
-              onClick={() => onUndo(order, "completed")}
-            >
-              <RotateCcw size={13} className="inline mr-1.5" />
-              Hoàn tác
-            </button>
-
-            <button
-              className="flex-1 h-9 rounded-xl bg-green-600 text-white text-[13px] flex items-center justify-center min-w-0 shadow-sm transition-all duration-150 hover:bg-green-500 hover:shadow-md"
-              onClick={() => onDeliver(order)}
-            >
-              Giao
-            </button>
-          </div>
-        )}
+        <button
+          className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-colors ${hasStartable
+              ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800"
+              : "bg-slate-100 text-slate-400 border-slate-100 cursor-not-allowed"
+            }`}
+          disabled={!hasStartable}
+          onClick={() => onStartAll?.(order, items)}
+        >
+          Bắt đầu nấu tất cả
+        </button>
       </div>
     </div>
   );
@@ -231,6 +293,11 @@ function ChefDashboard() {
   const [error, setError] = useState(null);
   const [now, setNow] = useState(() => Date.now());
   const [notification, setNotification] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [selectedReason, setSelectedReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
 
   const fetchBoard = async () => {
     try {
@@ -299,9 +366,23 @@ function ChefDashboard() {
     setNotification(message);
   };
 
-  const markOrderItems = async (order, action) => {
-    const itemIds = getItemIds(order);
-    if (itemIds.length === 0) {
+  const handleOpenRejectModal = (item) => {
+    if (!item?.id) return;
+    setCancelTarget({ id: item.id, name: item.name || "món ăn" });
+    setSelectedReason("");
+    setCustomReason("");
+    setCancelError(null);
+  };
+
+  const handleCloseRejectModal = () => {
+    setCancelTarget(null);
+    setSelectedReason("");
+    setCustomReason("");
+    setCancelError(null);
+  };
+
+  const markItem = async (itemId, action) => {
+    if (!itemId) {
       throw new Error("Không tìm thấy món trong đơn này.");
     }
 
@@ -312,12 +393,11 @@ function ChefDashboard() {
           ? staffService.markItemServing
           : staffService.markItemReady;
 
-    await Promise.all(itemIds.map((itemId) => actionFn(itemId)));
+    await actionFn(itemId);
   };
 
-  const undoOrderItems = async (order, action) => {
-    const itemIds = getItemIds(order);
-    if (itemIds.length === 0) {
+  const undoItem = async (itemId, action) => {
+    if (!itemId) {
       throw new Error("Không tìm thấy món trong đơn này.");
     }
 
@@ -326,13 +406,13 @@ function ChefDashboard() {
         ? staffService.revertItemToPreparing
         : staffService.revertItemToCooking;
 
-    await Promise.all(itemIds.map((itemId) => actionFn(itemId)));
+    await actionFn(itemId);
   };
 
-  const handleStart = async (order) => {
+  const handleStartItem = async (order, item) => {
     try {
-      await markOrderItems(order, "cooking");
-      showNotification(`${order.table} đã bắt đầu chế biến!`);
+      await markItem(item.id, "cooking");
+      showNotification(`${order.table} nhận ${item.name}.`);
       await fetchBoard();
     } catch (err) {
       setError(
@@ -341,10 +421,10 @@ function ChefDashboard() {
     }
   };
 
-  const handleComplete = async (order) => {
+  const handleCompleteItem = async (order, item) => {
     try {
-      await markOrderItems(order, "cooked");
-      showNotification(`${order.table} chế biến hoàn thành! Sẵn sàng phục vụ.`);
+      await markItem(item.id, "cooked");
+      showNotification(`${order.table} đã xong ${item.name}.`);
       await fetchBoard();
     } catch (err) {
       setError(
@@ -353,17 +433,17 @@ function ChefDashboard() {
     }
   };
 
-  const handleUndo = async (order, from) => {
+  const handleUndoItem = async (order, item, from) => {
     try {
-      await undoOrderItems(
-        order,
+      await undoItem(
+        item.id,
         from === "cooking" ? "revert-pending" : "revert-cooking",
       );
 
       showNotification(
         from === "cooking"
-          ? `${order.table} đã hoàn tác, món quay về chờ nấu.`
-          : `${order.table} đã hoàn tác, món quay về đang nấu.`,
+          ? `${order.table} đã hoàn tác ${item.name}, quay về chờ nấu.`
+          : `${order.table} đã hoàn tác ${item.name}, quay về đang nấu.`,
       );
       await fetchBoard();
     } catch (err) {
@@ -373,21 +453,15 @@ function ChefDashboard() {
     }
   };
 
-  const handleDeliver = async (order) => {
+  const handleDeliverItem = async (order, item) => {
     try {
-      await markOrderItems(order, "serving");
-
-      setBoard((prev) => ({
-        ...prev,
-        completedOrders: prev.completedOrders.filter(
-          (item) => item.id !== order.id,
-        ),
-      }));
+      await markItem(item.id, "serving");
 
       const deliveredEntry = {
-        id: `${order.id}-${Date.now()}`,
+        id: `${order.id}-${item.id}-${Date.now()}`,
+        orderId: order.id,
         table: order.table,
-        quantity: getOrderQuantity(order),
+        quantity: Number(item.qty || 0),
         time: new Date().toLocaleTimeString("vi-VN", {
           hour: "2-digit",
           minute: "2-digit",
@@ -397,20 +471,79 @@ function ChefDashboard() {
       };
 
       saveDeliveryNotification(deliveredEntry);
-      showNotification(`Đã bàn giao ${order.table} cho phục vụ.`);
+      showNotification(`Đã bàn giao ${item.name} (${order.table}).`);
       await fetchBoard();
     } catch (err) {
       setError(
         err.response?.data?.error ||
-          err.message ||
-          "Không thể ghi nhận bàn giao",
+        err.message ||
+        "Không thể ghi nhận bàn giao",
       );
+    }
+  };
+
+  const handleStartAll = async (order, items) => {
+    const startableItems = items.filter(
+      (item) => (item.status || "preparing") === "preparing",
+    );
+
+    if (startableItems.length === 0) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        startableItems.map((item) => markItem(item.id, "cooking")),
+      );
+      showNotification(`${order.table} bắt đầu nấu tất cả món.`);
+      await fetchBoard();
+    } catch (err) {
+      setError(
+        err.response?.data?.error || err.message || "Không thể bắt đầu món",
+      );
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget?.id) return;
+    const reason =
+      selectedReason === "__custom" ? customReason.trim() : selectedReason;
+
+    if (!reason) {
+      setCancelError("Vui lòng chọn lý do hủy món.");
+      return;
+    }
+
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await staffService.cancelItem(cancelTarget.id, reason);
+      showNotification(`Đã hủy ${cancelTarget.name}.`);
+      handleCloseRejectModal();
+      await fetchBoard();
+    } catch (err) {
+      setCancelError(
+        err.response?.data?.error || err.message || "Không thể hủy món",
+      );
+    } finally {
+      setCancelling(false);
     }
   };
 
   return (
     <div className="p-4">
-      <div className="grid xl:grid-cols-4 gap-4">
+      {notification && (
+        <div className="fixed top-4 right-4 z-40 max-w-xs rounded-xl border border-emerald-200 bg-white px-3 py-2 shadow-md shadow-slate-200/70 flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[12px] font-bold shrink-0">
+            ✓
+          </div>
+          <p className="text-[12px] leading-4 font-semibold text-emerald-700">
+            {notification}
+          </p>
+        </div>
+      )}
+
+      <div className="grid lg:grid-cols-2 gap-4">
         <div className="bg-slate-100 rounded-2xl p-4 min-h-[524px] max-h-[524px] flex flex-col">
           <div className="flex justify-center gap-2 mb-4">
             <h2 className="font-bold text-blue-600">CHỜ NẤU</h2>
@@ -435,10 +568,12 @@ function ChefDashboard() {
                   order={order}
                   status="pending"
                   now={now}
-                  onStart={handleStart}
-                  onComplete={handleComplete}
-                  onDeliver={handleDeliver}
-                  onUndo={handleUndo}
+                  onItemCancel={handleOpenRejectModal}
+                  onItemStart={handleStartItem}
+                  onItemComplete={handleCompleteItem}
+                  onItemDeliver={handleDeliverItem}
+                  onItemUndo={handleUndoItem}
+                  onStartAll={handleStartAll}
                 />
               ))
             )}
@@ -469,116 +604,102 @@ function ChefDashboard() {
                   order={order}
                   status="cooking"
                   now={now}
-                  onStart={handleStart}
-                  onComplete={handleComplete}
-                  onDeliver={handleDeliver}
-                  onUndo={handleUndo}
+                  onItemCancel={handleOpenRejectModal}
+                  onItemStart={handleStartItem}
+                  onItemComplete={handleCompleteItem}
+                  onItemDeliver={handleDeliverItem}
+                  onItemUndo={handleUndoItem}
+                  onStartAll={handleStartAll}
                 />
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="bg-green-50 rounded-2xl p-4 min-h-[524px] max-h-[524px] flex flex-col">
-          <div className="flex justify-center gap-2 mb-4">
-            <h2 className="font-bold text-green-600">ĐÃ XONG</h2>
-
-            <span className="bg-green-100 text-green-600 px-2 rounded-full text-sm font-bold">
-              {board.completedOrders.length}
-            </span>
-          </div>
-
-          <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-            {board.completedOrders.length === 0 ? (
-              <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center text-slate-400">
-                <div className="w-14 h-14 rounded-full bg-white border border-slate-100 flex items-center justify-center mb-4 text-xl">
-                  🍳
-                </div>
-                <div>Trống</div>
-              </div>
-            ) : (
-              board.completedOrders.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  status="completed"
-                  now={now}
-                  onStart={handleStart}
-                  onComplete={handleComplete}
-                  onDeliver={handleDeliver}
-                  onUndo={handleUndo}
-                />
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 min-h-[520px] max-h-[520px] relative">
-          {notification && (
-            <div className="absolute -top-2 right-3 z-20 max-w-xs rounded-xl border border-emerald-200 bg-white px-3 py-2 shadow-md shadow-slate-200/70 flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[12px] font-bold shrink-0">
-                ✓
-              </div>
-              <p className="text-[12px] leading-4 font-semibold text-emerald-700">
-                {notification}
-              </p>
-            </div>
-          )}
-
-          <h2 className="font-bold text-slate-800 mb-4">
-            TỔNG HỢP MÓN (BATCHING)
-          </h2>
-
-          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-            {board.batching.length === 0 ? (
-              <div className="flex items-center justify-center h-[420px]">
-                <p className="text-slate-400 text-sm font-medium">
-                  Hôm nay chưa có món nào
-                </p>
-              </div>
-            ) : (
-              board.batching.map((dish) => (
-                <div
-                  key={dish.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                      {dish.image ? (
-                        <img
-                          src={dish.image}
-                          alt={dish.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-[10px] text-slate-300">
-                          No img
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="font-semibold text-slate-800 text-sm truncate">
-                        {dish.name}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {dish.orderCount} đơn hôm nay
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="text-lg font-extrabold text-slate-800 leading-none">
-                      {dish.qty}
-                    </div>
-                    <div className="text-xs text-slate-500">phần</div>
-                  </div>
-                </div>
               ))
             )}
           </div>
         </div>
       </div>
+
+
+
+      {cancelTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-800">
+                Hủy món: {cancelTarget.name}
+              </h3>
+              <button
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100"
+                onClick={handleCloseRejectModal}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="px-4 py-4 space-y-3">
+              <p className="text-xs text-slate-500">
+                Chọn lý do để ghi nhận hủy món.
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {CANCEL_REASONS.map((reason) => (
+                  <button
+                    key={reason}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${selectedReason === reason
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                      }`}
+                    onClick={() => setSelectedReason(reason)}
+                  >
+                    {reason}
+                  </button>
+                ))}
+                <button
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${selectedReason === "__custom"
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                    }`}
+                  onClick={() => setSelectedReason("__custom")}
+                >
+                  Lý do khác
+                </button>
+              </div>
+
+              {selectedReason === "__custom" && (
+                <input
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  placeholder="Nhập lý do hủy..."
+                  value={customReason}
+                  onChange={(event) => setCustomReason(event.target.value)}
+                />
+              )}
+
+              {cancelError && (
+                <p className="text-xs text-rose-500 font-semibold">
+                  {cancelError}
+                </p>
+              )}
+            </div>
+
+            <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                className="h-9 px-4 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:border-slate-300"
+                onClick={handleCloseRejectModal}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                className={`h-9 px-4 rounded-xl text-xs font-semibold border transition-colors ${cancelling
+                    ? "bg-slate-200 text-slate-400 border-slate-200 cursor-not-allowed"
+                    : "bg-rose-600 text-white border-rose-600 hover:bg-rose-500"
+                  }`}
+                onClick={handleConfirmCancel}
+                disabled={cancelling}
+              >
+                Xác nhận hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

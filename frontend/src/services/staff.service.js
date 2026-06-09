@@ -53,6 +53,16 @@ export const getKitchenBoard = () => {
   return api.get("/staff/kitchen-board");
 };
 
+// Lấy thống kê tổng quan bếp (GET /api/staff/kitchen-stats)
+export const getKitchenStats = () => {
+  return api.get("/staff/kitchen-stats");
+};
+
+// Lấy lịch sử món chi tiết (GET /api/staff/kitchen-history)
+export const getKitchenHistory = (params) => {
+  return api.get("/staff/kitchen-history", { params });
+};
+
 // ==================== DUYỆT ĐƠN ====================
 
 // Lấy danh sách đơn chờ duyệt (GET /api/staff/pending-orders)

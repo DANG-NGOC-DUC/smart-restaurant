@@ -39,6 +39,22 @@ router.get(
   staffController.getKitchenBoard,
 );
 
+// GET /api/staff/kitchen-stats — Thống kê tổng quan bếp trong ngày
+router.get(
+  "/kitchen-stats",
+  auth,
+  allowRoles("staff", "chef"),
+  staffController.getKitchenStats,
+);
+
+// GET /api/staff/kitchen-history — Lịch sử món chi tiết có phân trang
+router.get(
+  "/kitchen-history",
+  auth,
+  allowRoles("staff", "chef"),
+  staffController.getKitchenHistory,
+);
+
 // ===== Đơn hàng chờ duyệt (khách QR order) =====
 // GET /api/staff/pending-orders
 router.get(
@@ -69,7 +85,7 @@ router.patch(
 router.patch(
   "/order-items/:itemId/cancel",
   auth,
-  allowRoles("staff"),
+  allowRoles("staff", "chef"),
   staffController.cancelItem,
 );
 

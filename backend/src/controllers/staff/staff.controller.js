@@ -507,6 +507,33 @@ const createRequest = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/staff/kitchen-stats
+ * Lấy 4 chỉ số tổng quan bếp trong ngày
+ */
+const getKitchenStats = async (req, res, next) => {
+  try {
+    const stats = await staffService.getKitchenStats();
+    res.status(200).json(stats);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/staff/kitchen-history
+ * Lấy lịch sử món chi tiết, có phân trang + lọc
+ * Query: ?page=1&limit=20&status=served&date=2026-06-09
+ */
+const getKitchenHistory = async (req, res, next) => {
+  try {
+    const result = await staffService.getKitchenHistory(req.query);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const staffController = {
   getTables,
   getTableDetail,
@@ -531,4 +558,6 @@ export const staffController = {
   getServingItems,
   confirmReceiveFromKitchen,
   markItemDelivered,
+  getKitchenStats,
+  getKitchenHistory,
 };
