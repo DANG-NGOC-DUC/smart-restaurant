@@ -1291,6 +1291,28 @@ const getKitchenHistory = async (filters = {}) => {
   };
 };
 
+/**
+ * Đổi trạng thái khả dụng của món ăn (Chef)
+ */
+const toggleMenuItemAvailability = async (itemId, isAvailable) => {
+  const item = await knex("menu_items").where({ id: itemId }).first();
+  if (!item) {
+    throw new Error("Không tìm thấy món.");
+  }
+  
+  const status = isAvailable ? "available" : "out";
+  
+  const [updated] = await knex("menu_items")
+    .where({ id: itemId })
+    .update({ 
+      is_available: isAvailable,
+      status: status
+    })
+    .returning("*");
+
+  return updated;
+};
+
 export const staffService = {
   getTablesForStaff,
   getTableDetail,
@@ -1317,4 +1339,5 @@ export const staffService = {
   getServiceRequests,
   getKitchenStats,
   getKitchenHistory,
+  toggleMenuItemAvailability,
 };

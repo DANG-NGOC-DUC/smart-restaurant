@@ -22,6 +22,14 @@ router.get(
 // GET /api/staff/menu  — danh mục + món còn phục vụ
 router.get("/menu", auth, allowRoles("staff"), staffController.getMenu);
 
+// PATCH /api/staff/menu-items/:id/availability — Bếp bật/tắt món ăn
+router.patch(
+  "/menu-items/:id/availability",
+  auth,
+  allowRoles("chef"),
+  staffController.toggleMenuItemAvailability,
+);
+
 // ===== Món chờ phục vụ =====
 // GET /api/staff/pending-items
 router.get(

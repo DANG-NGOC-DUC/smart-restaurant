@@ -63,6 +63,11 @@ export const getKitchenHistory = (params) => {
   return api.get("/staff/kitchen-history", { params });
 };
 
+// Đổi trạng thái khả dụng của món ăn (PATCH /api/staff/menu-items/:id/availability)
+export const toggleMenuItemAvailability = (itemId, is_available) => {
+  return api.patch(`/staff/menu-items/${itemId}/availability`, { is_available });
+};
+
 // ==================== DUYỆT ĐƠN ====================
 
 // Lấy danh sách đơn chờ duyệt (GET /api/staff/pending-orders)

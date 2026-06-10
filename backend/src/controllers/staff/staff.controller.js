@@ -534,6 +534,32 @@ const getKitchenHistory = async (req, res, next) => {
   }
 };
 
+/**
+ * PATCH /api/staff/menu-items/:id/availability
+ * Bếp đổi trạng thái món ăn (Hết hàng / Có hàng)
+ */
+const toggleMenuItemAvailability = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { is_available } = req.body;
+    
+    if (is_available === undefined) {
+      return res.status(400).json({ error: "Thiếu trường is_available." });
+    }
+
+    const updated = await staffService.toggleMenuItemAvailability(id, is_available);
+    res.status(200).json({
+      message: "Đã cập nhật trạng thái món ăn.",
+      data: updated,
+    });
+  } catch (error) {
+    if (error.message.includes("Không tìm thấy")) {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+};
+
 export const staffController = {
   getTables,
   getTableDetail,
@@ -560,4 +586,5 @@ export const staffController = {
   markItemDelivered,
   getKitchenStats,
   getKitchenHistory,
+  toggleMenuItemAvailability,
 };

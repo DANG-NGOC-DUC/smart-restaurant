@@ -31,26 +31,90 @@ smart-restaurant/
 ## 3. Yêu cầu môi trường
 
 - Node.js 18+
-- npm 9+
-- Một project Supabase đang hoạt động
+- npm 9+ (hoặc Yarn / pnpm)
+- Một project [Supabase](https://supabase.com/) đang hoạt động (để lấy thông tin Database và API Keys)
 
 ## 4. Cài đặt và chạy dự án
 
 ### 4.1 Backend
 
+Backend xử lý logic API và kết nối trực tiếp với Database qua Knex.js.
+
+**Bước 1: Di chuyển vào thư mục backend và cài đặt thư viện**
+
 ```bash
 cd backend
 npm install
+```
+
+**Bước 2: Cầu hình biến môi trường**
+Tạo một file `.env` nằm ở thư mục `backend/` và sao chép nội dung từ mẫu sau:
+
+```env
+# Backend .env file
+PORT=3001
+
+# Supabase Keys (Lấy trong phần Project Settings > API của Supabase)
+SUPABASE_URL="https://[PROJECT_ID].supabase.co"
+SUPABASE_ANON_KEY="your-anon-key-here"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key-here"
+
+# Chuỗi kết nối Database cho Knex migrations/seeding
+# Lấy trong Database Settings > Connection String > URI
+# Ví dụ: postgresql://postgres.[project_id]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+DATABASE_URL="your-database-connection-string"
+```
+
+**Bước 3: Khởi tạo Database (Migrations & Seeding)**
+Hệ thống sử dụng Knex.js để quản lý cơ sở dữ liệu. Chạy lần lượt các lệnh sau:
+
+```bash
+# Chạy migration để tự động tạo các bảng trong Database
+npx knex migrate:latest
+
+# Chạy seed để đẩy dữ liệu mẫu ban đầu vào Database
+npx knex seed:run
+```
+
+**Bước 4: Chạy Server Backend**
+
+```bash
 npm run dev
 ```
 
+_Server mặc định sẽ chạy ở địa chỉ: `http://localhost:3001`_
+
 ### 4.2 Frontend
+
+Frontend được xây dựng bằng React và Vite.
+
+**Bước 1: Di chuyển vào thư mục frontend và cài đặt thư viện**
+Mở một cửa sổ terminal mới và thực hiện:
 
 ```bash
 cd frontend
 npm install
+```
+
+**Bước 2: Cấu hình biến môi trường**
+Tạo file `.env` (hoặc `.env.local`) trong thư mục `frontend/` và cung cấp các thông tin sau:
+
+```env
+# URL của Backend
+VITE_API_URL="http://localhost:3001/api"
+
+# Supabase Keys dùng tại Client
+VITE_SUPABASE_URL="https://[PROJECT_ID].supabase.co"
+VITE_SUPABASE_ANON_KEY="your-anon-key-here"
+```
+
+**Bước 3: Khởi chạy Giao diện Frontend**
+
+```bash
 npm run dev
 ```
+
+_Mở trình duyệt truy cập đường dẫn hiển thị trên terminal (thường là `http://localhost:5173`)_
 
 ## 5. Quy ước trạng thái nghiệp vụ
 
