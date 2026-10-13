@@ -1,0 +1,3 @@
+// Setup global matchers từ @testing-library/jest-dom
+// Ví dụ: toBeInTheDocument(), toHaveClass(), toHaveValue()...
+import "@testing-library/jest-dom";
